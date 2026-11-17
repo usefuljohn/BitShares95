@@ -1226,10 +1226,17 @@
       });
     }
 
-    // Main Data Refresh Procedure
-    async function refreshAllData() {
+    // A failed refresh is tried once more after this delay, instead of waiting for the next
+    // auto-refresh; a single slow or rejected node call is the usual cause
+    const RETRY_DELAY_MS = 5000;
+    let retryTimer = null;
+
+    // Main Data Refresh Procedure (isRetry: this is the one retry after a failure)
+    async function refreshAllData(isRetry = false) {
       if (refreshInFlight) return;
       refreshInFlight = true;
+      clearTimeout(retryTimer);
+      retryTimer = null;
 
       const btnRefresh = document.getElementById('btn-refresh');
       btnRefresh.disabled = true;
@@ -1475,7 +1482,10 @@
 
       } catch (err) {
         console.error('Refresh error:', err);
-        setFreshness(false, err);
+        setFreshness(false, err, !isRetry);
+        if (!isRetry) {
+          retryTimer = setTimeout(() => { retryTimer = null; refreshAllData(true); }, RETRY_DELAY_MS);
+        }
       } finally {
         refreshInFlight = false;
         btnRefresh.disabled = false;
@@ -1545,7 +1555,7 @@
       el.classList.toggle('visible', notes.length > 0);
     }
 
-    function setFreshness(ok, err) {
+    function setFreshness(ok, err, retrying = false) {
       const el = document.getElementById('last-updated');
       const main = document.querySelector('main');
       const fmt = d => d.toLocaleTimeString();
@@ -1555,11 +1565,14 @@
         el.title = lastSuccessAt.toISOString();
         main.classList.remove('stale');
       } else {
-        el.textContent = lastSuccessAt
-          ? `Refresh failed ${fmt(new Date())}: showing ${fmt(lastSuccessAt)} data`
-          : `Refresh failed ${fmt(new Date())}`;
+        // The reason, then what happens next and what is on screen
+        const reason = String(err?.message || 'unknown error');
+        const parts = [`Refresh failed ${fmt(new Date())}: ${reason.length > 80 ? reason.slice(0, 77) + '...' : reason}`];
+        parts.push(retrying ? `retrying in ${RETRY_DELAY_MS / 1000} s` : 'next try at the auto-refresh, or press Refresh');
+        if (lastSuccessAt) parts.push(`showing ${fmt(lastSuccessAt)} data`);
+        el.textContent = parts.join(' · ');
         el.className = 'last-updated failed';
-        el.title = err?.message || '';
+        el.title = reason;
         if (lastSuccessAt) main.classList.add('stale');
         updateStatus('error', 'Refresh failed');
       }
