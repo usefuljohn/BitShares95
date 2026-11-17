@@ -1,0 +1,1694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../shared/fonts.css">
+  <title>DaoStreet CreditFlow - Global TVL & Collateral Tracker</title>
+  <meta name="description" content="Monitor DaoStreet Credit offers TVL, credit composition, and collateral breakdown in real-time." />
+  <style>
+    :root {
+      --bg-dark: #090c13;
+      --bg-card: #111723;
+      --bg-card-hover: #172030;
+      --bg-input: #182234;
+      --border-color: #24324a;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --primary: #00f2fe;
+      --primary-hover: #4facfe;
+      --accent: #38ef7d;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --purple: #a855f7;
+      --pink: #ec4899;
+      --amber: #f59e0b;
+      --font-sans: var(--font-ui);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+      padding: 1.5rem;
+      background-image: 
+        radial-gradient(circle at 10% 10%, rgba(0, 242, 254, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 90% 90%, rgba(56, 239, 125, 0.04) 0%, transparent 40%);
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-logo {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, var(--accent), var(--primary));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.3rem;
+      color: #000;
+      box-shadow: 0 0 15px rgba(56, 239, 125, 0.4);
+    }
+
+    .brand-text h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(90deg, #fff, var(--primary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-text p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .header-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    /* Status Badge */
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.8rem;
+      border-radius: 9999px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+    }
+
+    .status-badge.connected .status-dot {
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    .status-badge.connecting .status-dot {
+      background: var(--warning);
+      animation: pulse 1.5s infinite;
+    }
+
+    .status-badge.error .status-dot {
+      background: var(--danger);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.1rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), #0072ff);
+      color: #000;
+      box-shadow: 0 4px 15px rgba(0, 242, 254, 0.3);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(0, 242, 254, 0.5);
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--bg-card-hover);
+      border-color: var(--primary);
+      color: var(--primary);
+      transform: translateY(-1px);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* Hero Metrics Grid */
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .hero-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      padding: 1.25rem 1.5rem;
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 0.5rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+
+    .hero-card .label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .hero-card .value {
+      font-family: var(--font-mono);
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .hero-card .sub {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+
+    /* Layout Grids */
+    .grid-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 960px) {
+      .grid-2col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.5rem;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-main);
+    }
+
+    .card-title-left {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card-title svg {
+      color: var(--primary);
+    }
+
+    /* SVG Donut Chart Section */
+    .chart-container {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      padding: 1rem 0;
+    }
+
+    .svg-donut-wrapper {
+      position: relative;
+      width: 180px;
+      height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .svg-donut-wrapper svg {
+      transform: rotate(-90deg);
+      width: 100%;
+      height: 100%;
+    }
+
+    .donut-center-text {
+      position: absolute;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .donut-center-text .val {
+      font-family: var(--font-mono);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .donut-center-text .lbl {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .legend-list {
+      flex: 1;
+      min-width: 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .legend-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .legend-item:last-child {
+      border-bottom: none;
+    }
+
+    .legend-label-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .legend-color-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .legend-val-group {
+      text-align: right;
+      font-family: var(--font-mono);
+    }
+
+    .legend-val-group .usd {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .legend-val-group .pct {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .badge-header {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      background: rgba(0, 242, 254, 0.12);
+      color: var(--primary);
+      border: 1px solid rgba(0, 242, 254, 0.3);
+    }
+
+    /* Badges for Taken % and Collateral Ratio */
+    .badge-header.badge-taken {
+      background: rgba(0, 242, 254, 0.12);
+      color: var(--primary);
+      border-color: rgba(0, 242, 254, 0.35);
+    }
+    .badge-header.badge-taken.high {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--warning);
+      border-color: rgba(245, 158, 11, 0.4);
+    }
+
+    .badge-header.badge-ratio {
+      background: rgba(56, 239, 125, 0.12);
+      color: var(--accent);
+      border-color: rgba(56, 239, 125, 0.35);
+    }
+    .badge-header.badge-ratio.warning {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--warning);
+      border-color: rgba(245, 158, 11, 0.4);
+    }
+
+    /* Utilization Progress Bar */
+    .utilization-bar-container {
+      width: 100%;
+      height: 6px;
+      background: var(--bg-input);
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 0.4rem 0 0.2rem 0;
+      border: 1px solid var(--border-color);
+    }
+
+    .utilization-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      border-radius: 999px;
+      transition: width 0.5s ease;
+    }
+
+    .utilization-bar-fill.high {
+      background: linear-gradient(90deg, var(--warning), var(--accent));
+    }
+
+    /* Freshness & data-quality notes */
+    .last-updated {
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+    }
+
+    .last-updated.failed {
+      color: var(--danger);
+    }
+
+    main.stale {
+      opacity: 0.55;
+      transition: opacity 0.3s ease;
+    }
+
+    .data-notes {
+      display: none;
+      margin-bottom: 1.5rem;
+      padding: 0.6rem 0.9rem;
+      border-radius: 10px;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      background: rgba(245, 158, 11, 0.08);
+      color: var(--warning);
+      font-size: 0.8rem;
+    }
+
+    .data-notes.visible {
+      display: block;
+    }
+
+    /* Public asset category, account badges & sub-offer styles */
+    .category-tag {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 0.1rem 0.45rem;
+      border-radius: 6px;
+      font-size: 0.65rem;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      vertical-align: middle;
+      background: rgba(0, 242, 254, 0.12);
+      color: var(--primary);
+      border: 1px solid rgba(0, 242, 254, 0.3);
+    }
+
+    .category-tag.crypto {
+      background: rgba(168, 85, 247, 0.12);
+      color: var(--purple);
+      border-color: rgba(168, 85, 247, 0.35);
+    }
+
+    .category-tag.fiat {
+      background: rgba(56, 239, 125, 0.12);
+      color: var(--accent);
+      border-color: rgba(56, 239, 125, 0.35);
+    }
+
+    .category-tag.commodity {
+      background: rgba(245, 158, 11, 0.12);
+      color: var(--amber);
+      border-color: rgba(245, 158, 11, 0.35);
+    }
+
+    .account-tag {
+      display: inline-block;
+      margin-left: 4px;
+      padding: 0.1rem 0.4rem;
+      border-radius: 6px;
+      font-size: 0.65rem;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      background: rgba(148, 163, 184, 0.1);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      vertical-align: middle;
+    }
+
+    .legend-meta {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+
+    .sub-offers-line {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      margin-top: 0.25rem;
+      font-family: var(--font-mono);
+    }
+
+    .sub-offer-chip {
+      color: var(--text-muted);
+    }
+
+    footer {
+      margin-top: auto;
+      padding-top: 2rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="brand-logo">🌊</div>
+        <div class="brand-text">
+          <h1>DaoStreet CreditFlow</h1>
+          <p>Credit Offers TVL & Collateral Tracker</p>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <div id="connection-status" class="status-badge connecting">
+          <span class="status-dot"></span>
+          <span class="status-text">Connecting...</span>
+        </div>
+
+        <span id="last-updated" class="last-updated">Not yet updated</span>
+
+        <button id="btn-refresh" class="btn btn-primary" title="Fetch fresh chain data">
+          🔄 Refresh Data
+        </button>
+      </div>
+    </header>
+
+    <div id="data-notes" class="data-notes"></div>
+
+    <!-- Main Content: GLOBAL TVL & COLLATERAL TRACKER -->
+    <main>
+      <!-- Hero Metric Cards (2-Column Focused TVL Layout) -->
+      <div class="hero-grid">
+        <div class="hero-card">
+          <div class="label">
+            <span>Total USD Credit</span>
+            <div style="display: flex; gap: 0.4rem; align-items: center;">
+              <span id="tvl-taken-badge" class="badge-header badge-taken" style="font-size: 0.72rem; padding: 0.15rem 0.55rem;">0.0% Taken</span>
+              <span id="tvl-active-badge" class="badge-header" style="font-size: 0.72rem; padding: 0.15rem 0.55rem;">0 / 10 Active</span>
+            </div>
+          </div>
+          <div id="tvl-total-credit" class="value">$0.00</div>
+          <div class="utilization-bar-container">
+            <div id="tvl-utilization-bar" class="utilization-bar-fill"></div>
+          </div>
+          <div id="tvl-sub-offers" class="sub">
+            <span id="tvl-taken-amount" style="color: var(--primary); font-weight: 600;">$0.00 Taken</span> &bull; 
+            <span id="tvl-avail-amount" style="color: var(--text-muted);">$0.00 Available</span>
+          </div>
+        </div>
+
+        <div class="hero-card">
+          <div class="label">
+            <span>Posted Collateral Value</span>
+            <span id="tvl-collateral-ratio-badge" class="badge-header badge-ratio" style="font-size: 0.72rem; padding: 0.15rem 0.55rem;">— Ratio</span>
+          </div>
+          <div id="tvl-total-collateral" class="value">$0.00</div>
+          <div style="height: 6px; margin: 0.4rem 0 0.2rem 0;"></div>
+          <div id="tvl-active-deals-count" class="sub">
+            <span id="tvl-cr-description" style="color: var(--accent); font-weight: 600;">— of Taken Credit</span> &bull; Across 0 active deals
+          </div>
+        </div>
+      </div>
+
+      <!-- Donut Charts Grid -->
+      <div class="grid-2col">
+        <!-- Credit Composition -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path></svg>
+              Credit Composition
+            </div>
+            <span id="credit-comp-total" style="font-family: var(--font-mono); font-size: 1rem; color: var(--primary); font-weight: 700;">$0</span>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">USD-normalized credit per asset across monitored credit offers</div>
+
+          <div class="chart-container">
+            <div class="svg-donut-wrapper">
+              <svg id="svg-credit-donut" viewBox="0 0 160 160"></svg>
+              <div class="donut-center-text">
+                <div id="donut-credit-val" class="val">$0</div>
+                <div class="lbl">Credit</div>
+              </div>
+            </div>
+            <div id="credit-legend" class="legend-list" style="max-height: 360px; overflow-y: auto; padding-right: 0.5rem;"></div>
+          </div>
+        </div>
+
+        <!-- Collateral Composition -->
+        <div class="card">
+          <div class="card-title">
+            <div class="card-title-left">
+              <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+              Collateral Composition
+            </div>
+            <span id="collateral-comp-total" style="font-family: var(--font-mono); font-size: 1rem; color: var(--accent); font-weight: 700;">$0</span>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">Active credit deals grouped by posted collateral asset, weighted by USD value</div>
+
+          <div class="chart-container">
+            <div class="svg-donut-wrapper">
+              <svg id="svg-collateral-donut" viewBox="0 0 160 160"></svg>
+              <div class="donut-center-text">
+                <div id="donut-collateral-val" class="val">$0</div>
+                <div class="lbl">Collateral</div>
+              </div>
+            </div>
+            <div id="collateral-legend" class="legend-list" style="max-height: 360px; overflow-y: auto; padding-right: 0.5rem;"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      DaoStreet CreditFlow &bull; Zero Dependency Single-Page HTML App &bull; <a href="offers.html" style="color: var(--primary); text-decoration: none;">Offers Detail &rarr;</a>
+    </footer>
+  </div>
+
+  <script src="../shared/b95-bridge.js"></script>
+  <script>
+    /**
+     * BitShares CreditFlow Engine with TVL & Collateral Analytics.
+     * Reads the chain through the BitShares Workstation bridge (../shared/b95-bridge.js).
+     */
+
+    // Scrub gateway/issuer prefixes from asset symbols (e.g. XBTSX.USDC -> USDC, IOB.XRP -> XRP).
+    // Preserves special symbols like XBTSX.A where the single-character symbol alone is ambiguous.
+    function scrubAssetSymbol(sym) {
+      if (!sym || typeof sym !== 'string') return '';
+      if (sym === 'IOB.XRP') return 'XRP';
+      if (sym.startsWith('XBTSX.') && sym !== 'XBTSX.A') return sym.slice(6);
+      return sym;
+    }
+
+    const MONITORED_OFFERS = [
+      { offerId: '1.21.542', symbol: 'USDT', assetId: '1.3.5589', pricing: 'stable', category: 'USD-pegged', account: 'bit20' },
+      { offerId: '1.21.687', symbol: 'USDT', assetId: '1.3.5589', pricing: 'stable', category: 'USD-pegged', account: 'akledirs-account' },
+      { offerId: '1.21.533', symbol: 'USDC', assetId: '1.3.5902', pricing: 'stable', category: 'USD-pegged', account: 'bit20' },
+      { offerId: '1.21.688', symbol: 'USDC', assetId: '1.3.5902', pricing: 'stable', category: 'USD-pegged', account: 'akledirs-account' },
+      { offerId: '1.21.681', symbol: 'HONEST.USD', assetId: '1.3.5649', pricing: 'stable', category: 'USD-pegged', account: 'gringotts' },
+      { offerId: '1.21.593', symbol: 'BTS', assetId: '1.3.0', pricing: 'direct', poolId: '1.19.48', quoteAssetId: '1.3.5589', category: 'Crypto', account: 'bit20' },
+      { offerId: '1.21.670', symbol: 'XRP', assetId: '1.3.5537', pricing: 'chained', poolId: '1.19.133', quoteAssetId: '1.3.0', chainedPoolId: '1.19.48', chainedQuoteAssetId: '1.3.5589', category: 'Crypto', account: 'gringotts' },
+      { offerId: '1.21.672', symbol: 'XAUT', assetId: '1.3.6139', pricing: 'direct', poolId: '1.19.473', quoteAssetId: '1.3.5589', category: 'Commodity' },
+      { offerId: '1.21.669', symbol: 'bitRUBLE', assetId: '1.3.1325', pricing: 'chained', poolId: '1.19.231', quoteAssetId: '1.3.0', chainedPoolId: '1.19.48', chainedQuoteAssetId: '1.3.5589', category: 'Fiat', account: 'gringotts' },
+      { offerId: '1.21.674', symbol: 'BITEUR', assetId: '1.3.120', pricing: 'chained', poolId: '1.19.59', quoteAssetId: '1.3.0', chainedPoolId: '1.19.48', chainedQuoteAssetId: '1.3.5589', category: 'Fiat', account: 'gringotts' },
+      { offerId: '1.21.686', symbol: 'bitJPY', assetId: '1.3.119', pricing: 'chained', poolId: '1.19.186', quoteAssetId: '1.3.0', chainedPoolId: '1.19.48', chainedQuoteAssetId: '1.3.5589', category: 'Fiat', account: 'gringotts' },
+      { offerId: '1.21.667', symbol: 'XBTSX.A', assetId: '1.3.6620', pricing: 'chained', poolId: '1.19.532', quoteAssetId: '1.3.0', chainedPoolId: '1.19.48', chainedQuoteAssetId: '1.3.5589', category: 'Crypto' }
+    ];
+    MONITORED_OFFERS.forEach(cfg => { cfg.symbol = scrubAssetSymbol(cfg.symbol); });
+
+    const CR_FLOOR_PCT = 110;            // Global minimum collateral ratio target benchmark (110%)
+    const DEAL_PAGE_LIMIT = 101;         // Node-configured max for get_credit_deals_by_offer_id
+
+    // Color Palette for Credit & Collateral Assets
+    const PALETTE = [
+      '#00f2fe', '#38ef7d', '#a855f7', '#ec4899', '#f59e0b',
+      '#3b82f6', '#10b981', '#6366f1', '#f43f5e', '#8b5cf6',
+      '#06b6d4', '#eab308', '#14b8a6', '#d946ef', '#84cc16'
+    ];
+
+    // Colors are keyed by asset ID and kept across refreshes, so an asset has the
+    // same color in both donuts. Monitored loan assets own fixed colors; other
+    // (collateral-only) assets reuse the rest of the palette without colliding
+    // with anything else in the same chart.
+    const assetColors = new Map();
+    const uniqueMonitoredAssetIds = [...new Set(MONITORED_OFFERS.map(cfg => cfg.assetId))];
+    uniqueMonitoredAssetIds.forEach((assetId, i) => assetColors.set(assetId, PALETTE[i % PALETTE.length]));
+
+    function colorFor(assetId) {
+      return assetColors.get(assetId) || '#64748b';
+    }
+
+    function assignChartColors(assetIds) {
+      const used = new Set(assetIds.filter(id => assetColors.has(id)).map(id => assetColors.get(id)));
+      assetIds.forEach(id => {
+        if (assetColors.has(id)) return;
+        const color = PALETTE.find(c => !used.has(c)) || PALETTE[used.size % PALETTE.length];
+        assetColors.set(id, color);
+        used.add(color);
+      });
+    }
+
+    // State Variables
+    let connectedHost = '';
+    let objectCache = new Map();
+
+    let fetchedPoolsMap = {};
+    let fetchedDynDataMap = {};
+
+    let refreshInFlight = false;
+    let lastSuccessAt = null;
+    let lastSnapshot = null;
+
+    // Node access goes through the BitShares Workstation bridge: inside the desktop it
+    // uses the desktop's shared node connection; opened on its own (Pop-out)
+    // the bridge opens a private read-only connection.
+    const BRIDGE_WAIT_MS = 30000;        // the desktop tries its nodes in turn, 8 s apiece
+    const nodeWaiters = [];
+    let standaloneState = null;
+
+    function isConnected() {
+      return !B95.embedded || B95.context.node?.status === 'online';
+    }
+
+    // Mirror the desktop's node status, and wake connectToNode() when it comes online
+    B95.onContext(({ node }) => {
+      if (!B95.embedded) return;
+      if (node?.status === 'online') {
+        connectedHost = node.url ? new URL(node.url).host : 'BitShares Workstation';
+        updateStatus('connected', `Connected via B95 (${connectedHost})`);
+        nodeWaiters.slice().forEach(done => done());
+      } else if (node?.status === 'offline') {
+        updateStatus('disconnected', 'Desktop node offline');
+      } else {
+        updateStatus('connecting', 'Desktop node connecting...');
+      }
+    });
+
+    async function connectToNode() {
+      if (isConnected()) return;
+      updateStatus('connecting', 'Waiting for BitShares Workstation node...');
+      await new Promise((resolve) => {
+        const timeout = setTimeout(done, BRIDGE_WAIT_MS);
+        function done() {
+          clearTimeout(timeout);
+          const i = nodeWaiters.indexOf(done);
+          if (i >= 0) nodeWaiters.splice(i, 1);
+          resolve();
+        }
+        nodeWaiters.push(done);
+      });
+      if (!isConnected()) {
+        updateStatus('error', 'BitShares Workstation node not ready');
+        throw new Error('BitShares Workstation desktop node is not connected');
+      }
+    }
+
+    // params is ['database', method, methodParams]
+    function wssQuery(params) {
+      const call = B95.rpc(params[1], params[2]);
+      if (!B95.embedded) {
+        call.then(() => setStandaloneState('connected', 'Connected (standalone)'),
+                  () => setStandaloneState('error', 'Node request failed (standalone)'));
+      }
+      return call;
+    }
+
+    function setStandaloneState(state, text) {
+      if (standaloneState === state) return;
+      standaloneState = state;
+      connectedHost = 'standalone';
+      updateStatus(state, text);
+    }
+
+    function clearDynamicCache() {
+      for (const key of objectCache.keys()) {
+        // Keep immutable asset metadata (1.3.x) while evicting mutable objects:
+        // 1.21.x (credit offers), 1.19.x (liquidity pools), 2.3.x (dynamic asset data)
+        if (!key.startsWith('1.3.')) {
+          objectCache.delete(key);
+        }
+      }
+    }
+
+    async function rpcGetObjects(objectIds) {
+      const ids = Array.isArray(objectIds) ? objectIds : [objectIds];
+      const results = {};
+      const missing = [];
+      for (const id of ids) {
+        if (objectCache.has(id)) results[id] = objectCache.get(id);
+        else missing.push(id);
+      }
+      if (missing.length === 0) return results;
+
+      const response = await wssQuery(['database', 'get_objects', [missing]]);
+      if (response && Array.isArray(response)) {
+        response.forEach((item, idx) => {
+          if (item) {
+            const objId = missing[idx];
+            objectCache.set(objId, item);
+            results[objId] = item;
+          }
+        });
+      }
+      return results;
+    }
+
+    // Pages through all deals for an offer. Throws on RPC failure so the caller
+    // can flag the offer instead of silently showing it with zero deals.
+    async function getCreditDealsForOffer(offerId) {
+      const deals = [];
+      let startId = null;
+      while (true) {
+        const params = startId ? [offerId, DEAL_PAGE_LIMIT, startId] : [offerId, DEAL_PAGE_LIMIT];
+        const page = await wssQuery(['database', 'get_credit_deals_by_offer_id', params]);
+        if (!Array.isArray(page) || page.length === 0) break;
+        // start_id is inclusive, so drop the deal we already have
+        const fresh = startId ? page.filter(d => d.id !== startId) : page;
+        deals.push(...fresh);
+        if (page.length < DEAL_PAGE_LIMIT || fresh.length === 0) break;
+        startId = page[page.length - 1].id;
+      }
+      return deals;
+    }
+
+    function extractOfferInfo(offerObj, assetObjs) {
+      if (!offerObj) return { rawAvail: 0, rawTotal: 0, rawMinDeal: 0, avail: 0, total: 0, minDeal: 0, precision: 5, enabled: false, feeRate: 0, maxDuration: 0 };
+
+      const rawAvail = offerObj.current_balance !== undefined
+        ? (typeof offerObj.current_balance === 'object' ? (offerObj.current_balance.amount || 0) : offerObj.current_balance)
+        : (typeof offerObj.balance === 'object' ? (offerObj.balance.amount || 0) : (offerObj.balance || 0));
+
+      const rawTotal = typeof offerObj.total_balance === 'object'
+        ? (offerObj.total_balance.amount || 0)
+        : (offerObj.total_balance || offerObj.balance || 0);
+
+      const rawMinDeal = typeof offerObj.min_deal_amount === 'object'
+        ? (offerObj.min_deal_amount.amount || 0)
+        : (offerObj.min_deal_amount || 0);
+
+      let precision = offerObj.precision;
+      if (!precision && offerObj.asset_type && assetObjs && assetObjs[offerObj.asset_type]) {
+        precision = assetObjs[offerObj.asset_type].precision;
+      }
+      if (!precision) {
+        if (offerObj.asset_type === '1.3.5589' || offerObj.asset_type === '1.3.5902' || offerObj.id === '1.21.533' || offerObj.id === '1.21.542' || offerObj.id === '1.21.687' || offerObj.id === '1.21.688' || offerObj.asset_type === '1.3.6139' || offerObj.asset_type === '1.3.6620') {
+          precision = 6;
+        } else if (offerObj.asset_type === '1.3.5649') {
+          precision = 7;
+        } else if (offerObj.asset_type === '1.3.120') {
+          precision = 4;
+        } else {
+          precision = 5;
+        }
+      }
+
+      const numAvail = parseFloat(rawAvail) || 0;
+      const numTotal = parseFloat(rawTotal) || 0;
+      const numMinDeal = parseFloat(rawMinDeal) || 0;
+
+      const avail = numAvail / Math.pow(10, precision);
+      const total = numTotal / Math.pow(10, precision);
+      const minDeal = numMinDeal / Math.pow(10, precision);
+
+      return {
+        rawAvail: numAvail,
+        rawTotal: numTotal,
+        rawMinDeal: numMinDeal,
+        avail,
+        total,
+        minDeal,
+        precision,
+        feeRate: offerObj.fee_rate !== undefined ? (parseFloat(offerObj.fee_rate) || 0) : 0,
+        maxDuration: offerObj.max_duration_seconds !== undefined ? (parseInt(offerObj.max_duration_seconds) || 0) : 0,
+        enabled: offerObj.enabled !== false
+      };
+    }
+
+    // LP Price Derivation
+    function getLpUnitPrice(poolObj, quoteAssetId, assetCache) {
+      if (!poolObj || !poolObj.balance_a || !poolObj.balance_b) return 0;
+      const isQuoteA = poolObj.asset_a === quoteAssetId;
+      const isQuoteB = poolObj.asset_b === quoteAssetId;
+
+      if (!isQuoteA && !isQuoteB) return 0;
+
+      const quoteId = isQuoteA ? poolObj.asset_a : poolObj.asset_b;
+      const baseId = isQuoteA ? poolObj.asset_b : poolObj.asset_a;
+
+      const quoteInfo = assetCache[quoteId] || { precision: 5 };
+      const baseInfo = assetCache[baseId] || { precision: 5 };
+
+      const rawQuote = isQuoteA ? parseFloat(poolObj.balance_a) : parseFloat(poolObj.balance_b);
+      const rawBase = isQuoteA ? parseFloat(poolObj.balance_b) : parseFloat(poolObj.balance_a);
+
+      const humanQuote = rawQuote / Math.pow(10, quoteInfo.precision);
+      const humanBase = rawBase / Math.pow(10, baseInfo.precision);
+
+      if (humanBase === 0) return 0;
+      return humanQuote / humanBase;
+    }
+
+    function getTwentixUsdPrice(poolMap, assetCache) {
+      const pool248 = poolMap['1.19.248'];
+      if (pool248) {
+        const directPrice = getLpUnitPrice(pool248, '1.3.5902', assetCache);
+        if (directPrice > 0) return directPrice;
+      }
+
+      const pool0 = poolMap['1.19.0'];
+      const pool48 = poolMap['1.19.48'];
+      if (pool0 && pool48) {
+        const btsUsd = getLpUnitPrice(pool48, '1.3.5589', assetCache);
+        const isBtsA = pool0.asset_a === '1.3.0';
+        const isBtsB = pool0.asset_b === '1.3.0';
+        if ((isBtsA || isBtsB) && btsUsd > 0) {
+          const rawBts = isBtsA ? parseFloat(pool0.balance_a) : parseFloat(pool0.balance_b);
+          const rawTwentix = isBtsA ? parseFloat(pool0.balance_b) : parseFloat(pool0.balance_a);
+          if (rawTwentix > 0) {
+            const btsPrec = assetCache['1.3.0']?.precision ?? 5;
+            const twentixPrec = assetCache['1.3.3291']?.precision ?? 5;
+            const btsPerTwentix = (rawBts / Math.pow(10, btsPrec)) / (rawTwentix / Math.pow(10, twentixPrec));
+            return btsPerTwentix * btsUsd;
+          }
+        }
+      }
+      return 0;
+    }
+
+    /**
+     * Universal Asset & LP Token USD Valuation Engine
+     */
+    function getAssetUsdPrice(assetId, poolMap, assetCache, dynCache, visited = new Set()) {
+      if (!assetId || visited.has(assetId)) return 0;
+      visited.add(assetId);
+
+      // 1. USD Stablecoins (USDT, USDC, HONEST.USD, BITUSD)
+      if (assetId === '1.3.5589' || assetId === '1.3.5902' || assetId === '1.3.5649' || assetId === '1.3.121') {
+        return 1.0;
+      }
+
+      // 2. Native BTS (1.3.0) via BTS/USDT pool 1.19.48
+      if (assetId === '1.3.0') {
+        const pool48 = poolMap['1.19.48'];
+        if (pool48) {
+          const btsUsd = getLpUnitPrice(pool48, '1.3.5589', assetCache);
+          if (btsUsd > 0) return btsUsd;
+        }
+      }
+
+      // 3. TWENTIX (1.3.3291)
+      if (assetId === '1.3.3291') {
+        const twentixPrice = getTwentixUsdPrice(poolMap, assetCache);
+        if (twentixPrice > 0) return twentixPrice;
+      }
+
+      const meta = assetCache[assetId];
+
+      // 4. LP Token Intrinsic Valuation (via for_liquidity_pool)
+      const lpPoolId = meta?.for_liquidity_pool;
+      if (lpPoolId && poolMap[lpPoolId]) {
+        const pool = poolMap[lpPoolId];
+        const prec = meta.precision !== undefined ? meta.precision : 5;
+
+        let lpSupply = 0;
+        if (meta.dynamic_asset_data_id && dynCache && dynCache[meta.dynamic_asset_data_id]) {
+          const rawSupply = parseFloat(dynCache[meta.dynamic_asset_data_id].current_supply || 0);
+          lpSupply = rawSupply / Math.pow(10, prec);
+        }
+
+        // No hardcoded supply fallbacks: without live supply data the LP token is
+        // reported as unpriced rather than valued from a stale snapshot.
+        if (lpSupply > 0) {
+          const assetA = pool.asset_a;
+          const assetB = pool.asset_b;
+          const precA = assetCache[assetA]?.precision !== undefined ? assetCache[assetA].precision : 5;
+          const precB = assetCache[assetB]?.precision !== undefined ? assetCache[assetB].precision : 5;
+          const natA = (parseFloat(pool.balance_a) || 0) / Math.pow(10, precA);
+          const natB = (parseFloat(pool.balance_b) || 0) / Math.pow(10, precB);
+
+          const priceA = getAssetUsdPrice(assetA, poolMap, assetCache, dynCache, new Set(visited));
+          const priceB = getAssetUsdPrice(assetB, poolMap, assetCache, dynCache, new Set(visited));
+
+          let poolTotalUsd = 0;
+          if (priceA > 0 && priceB > 0) {
+            poolTotalUsd = (natA * priceA) + (natB * priceB);
+          } else if (priceA > 0) {
+            poolTotalUsd = natA * priceA * 2;
+          } else if (priceB > 0) {
+            poolTotalUsd = natB * priceB * 2;
+          }
+
+          if (poolTotalUsd > 0) {
+            return poolTotalUsd / lpSupply;
+          }
+        }
+      }
+
+      // 5. Liquid Asset Reference Pools & Secondary Pool Lookups
+      for (const pool of Object.values(poolMap)) {
+        if (!pool || !pool.balance_a || !pool.balance_b) continue;
+        if (pool.asset_a === assetId || pool.asset_b === assetId) {
+          const quoteId = pool.asset_a === assetId ? pool.asset_b : pool.asset_a;
+          if (quoteId === '1.3.5589' || quoteId === '1.3.5902') {
+            const directPrice = getLpUnitPrice(pool, quoteId, assetCache);
+            if (directPrice > 0) return directPrice;
+          } else if (quoteId === '1.3.0') {
+            const btsUsd = getAssetUsdPrice('1.3.0', poolMap, assetCache, dynCache, new Set(visited));
+            const priceInBts = getLpUnitPrice(pool, quoteId, assetCache);
+            if (priceInBts > 0 && btsUsd > 0) {
+              return priceInBts * btsUsd;
+            }
+          } else if (quoteId === '1.3.3291') {
+            const twentixUsd = getAssetUsdPrice('1.3.3291', poolMap, assetCache, dynCache, new Set(visited));
+            const priceInTwentix = getLpUnitPrice(pool, quoteId, assetCache);
+            if (priceInTwentix > 0 && twentixUsd > 0) {
+              return priceInTwentix * twentixUsd;
+            }
+          }
+        }
+      }
+
+      return 0;
+    }
+
+    function calculateOfferUsdValuation(cfg, offerObj, poolMap, assetCache, dynCache) {
+      if (!offerObj) return null;
+      const info = extractOfferInfo(offerObj, assetCache);
+
+      let unitPrice = 0;
+      let source = '';
+
+      if (cfg.pricing === 'stable') {
+        unitPrice = 1.0;
+        source = 'stable USD (1:1)';
+      } else if (cfg.pricing === 'direct' && cfg.poolId && poolMap[cfg.poolId]) {
+        const pool = poolMap[cfg.poolId];
+        unitPrice = getLpUnitPrice(pool, cfg.quoteAssetId, assetCache);
+        source = `LP ${cfg.poolId}`;
+      } else if (cfg.pricing === 'chained' && cfg.poolId && cfg.chainedPoolId && poolMap[cfg.poolId] && poolMap[cfg.chainedPoolId]) {
+        const pool1 = poolMap[cfg.poolId];
+        const pool2 = poolMap[cfg.chainedPoolId];
+        const price1 = getLpUnitPrice(pool1, cfg.quoteAssetId, assetCache);
+        const price2 = getLpUnitPrice(pool2, cfg.chainedQuoteAssetId, assetCache);
+        unitPrice = price1 * price2;
+        source = `LP ${cfg.poolId} → ${cfg.chainedPoolId}`;
+      }
+
+      // Fallback to recursive universal valuation if price was zero or missing
+      if (unitPrice <= 0 && offerObj.asset_type) {
+        unitPrice = getAssetUsdPrice(offerObj.asset_type, poolMap, assetCache, dynCache);
+        if (unitPrice > 0) source = 'universal valuation';
+      }
+
+      const taken = Math.max(0, info.total - info.avail);
+      const usdBalance = info.avail * unitPrice;
+      const usdTotal = info.total * unitPrice;
+      const usdTaken = Math.max(0, usdTotal - usdBalance);
+      const utilizationPct = info.total > 0 ? (taken / info.total) * 100 : 0;
+
+      return {
+        unitPrice,
+        usdBalance,
+        usdTotal,
+        usdTaken,
+        avail: info.avail,
+        total: info.total,
+        taken,
+        utilizationPct,
+        minDeal: info.minDeal,
+        precision: info.precision,
+        feeRate: info.feeRate,
+        maxDuration: info.maxDuration,
+        enabled: info.enabled,
+        source: source || 'unpriced'
+      };
+    }
+
+    // Zero Dependency SVG Donut Chart Renderer
+    function renderSvgDonutChart(svgId, slices, totalUsd, centerValId) {
+      const svg = document.getElementById(svgId);
+      svg.innerHTML = '';
+
+      if (!slices || slices.length === 0 || totalUsd <= 0) {
+        svg.innerHTML = `<circle cx="80" cy="80" r="62" fill="none" stroke="#24324a" stroke-width="24" />`;
+        document.getElementById(centerValId).textContent = '$0';
+        return;
+      }
+
+      document.getElementById(centerValId).textContent = `$${Math.round(totalUsd).toLocaleString()}`;
+
+      const r = 62;
+      const circumference = 2 * Math.PI * r;
+      let accumulatedPct = 0;
+
+      slices.forEach(slice => {
+        const pct = slice.value / totalUsd;
+        if (pct <= 0) return;
+
+        const strokeDash = pct * circumference;
+        const gapDash = circumference - strokeDash;
+        const strokeOffset = -accumulatedPct * circumference;
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', '80');
+        circle.setAttribute('cy', '80');
+        circle.setAttribute('r', String(r));
+        circle.setAttribute('fill', 'none');
+        circle.setAttribute('stroke', slice.color);
+        circle.setAttribute('stroke-width', '24');
+        circle.setAttribute('stroke-dasharray', `${strokeDash} ${gapDash}`);
+        circle.setAttribute('stroke-dashoffset', String(strokeOffset));
+        circle.setAttribute('style', 'transition: stroke-width 0.2s ease;');
+
+        const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+        title.textContent = `${slice.label}: $${Math.round(slice.value).toLocaleString()} (${(pct * 100).toFixed(1)}%)`;
+        circle.appendChild(title);
+
+        svg.appendChild(circle);
+        accumulatedPct += pct;
+      });
+    }
+
+    // Formatting helpers
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function fmtUsd(v, dp = 2) {
+      return `$${v.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp })}`;
+    }
+
+    function fmtAmt(v) {
+      return v.toLocaleString('en-US', { maximumFractionDigits: v !== 0 && Math.abs(v) < 0.01 ? 6 : 2 });
+    }
+
+    function dealCollateralAsset(d) {
+      return d.collateral_asset ?? d.collateral_for_deposit?.asset_id ?? d.collateral?.asset_id;
+    }
+
+    function dealCollateralAmount(d) {
+      return parseFloat(String(d.collateral_amount ?? d.collateral_for_deposit?.amount ?? d.collateral?.amount ?? '0')) || 0;
+    }
+
+    function categoryBadge(category) {
+      if (!category) return { text: '', cls: '' };
+      let cls = '';
+      if (category === 'Crypto') cls = 'crypto';
+      else if (category === 'Fiat') cls = 'fiat';
+      else if (category === 'Commodity') cls = 'commodity';
+      return { text: category, cls };
+    }
+
+    // Fold individual offers by their underlying credit asset (e.g. folding multiple USDT offers)
+    function aggregateOffersByAsset(offerRows) {
+      const assetMap = new Map();
+      offerRows.forEach(row => {
+        const { cfg, evalRes, stats } = row;
+        const assetId = cfg.assetId;
+        if (!assetMap.has(assetId)) {
+          assetMap.set(assetId, {
+            assetId,
+            symbol: cfg.symbol,
+            category: cfg.category,
+            unitPrice: evalRes?.unitPrice || 0,
+            avail: 0,
+            total: 0,
+            taken: 0,
+            usdBalance: 0,
+            usdTotal: 0,
+            usdTaken: 0,
+            dealCount: 0,
+            debtUsd: 0,
+            collUsd: 0,
+            pricedDeals: 0,
+            unpricedDeals: 0,
+            offers: []
+          });
+        }
+        const grp = assetMap.get(assetId);
+        grp.offers.push(row);
+        if (evalRes) {
+          grp.avail += evalRes.avail;
+          grp.total += evalRes.total;
+          grp.taken += evalRes.taken;
+          grp.usdBalance += evalRes.usdBalance;
+          grp.usdTotal += evalRes.usdTotal;
+          grp.usdTaken += evalRes.usdTaken;
+          if ((!grp.unitPrice || grp.unitPrice <= 0) && evalRes.unitPrice > 0) {
+            grp.unitPrice = evalRes.unitPrice;
+          }
+        }
+        if (stats) {
+          grp.dealCount += stats.dealCount;
+          grp.debtUsd += stats.debtUsd;
+          grp.collUsd += stats.collUsd;
+          grp.pricedDeals += stats.pricedDeals;
+          grp.unpricedDeals += stats.unpricedDeals;
+        }
+      });
+
+      return Array.from(assetMap.values()).map(grp => {
+        grp.utilizationPct = grp.total > 0 ? (grp.taken / grp.total) * 100 : 0;
+        grp.cr = grp.debtUsd > 0 ? (grp.collUsd / grp.debtUsd) * 100 : null;
+        return grp;
+      });
+    }
+
+    // Main Data Refresh Procedure
+    async function refreshAllData() {
+      if (refreshInFlight) return;
+      refreshInFlight = true;
+
+      const btnRefresh = document.getElementById('btn-refresh');
+      btnRefresh.disabled = true;
+      btnRefresh.textContent = '⏳ Refreshing...';
+
+      try {
+        if (!isConnected()) {
+          await connectToNode();
+        }
+
+        // Invalidate dynamic on-chain objects so fresh balances/pools are retrieved
+        clearDynamicCache();
+
+        // 1. Fetch Monitored Offers & Initial Reference Pools
+        const offerIds = MONITORED_OFFERS.map(o => o.offerId);
+        const poolIds = [
+          '1.19.0', '1.19.248', '1.19.48', '1.19.133', '1.19.473',
+          '1.19.539', '1.19.399', '1.19.116', '1.19.44', '1.19.465', '1.19.501',
+          '1.19.507', '1.19.530', '1.19.231', '1.19.59', '1.19.63', '1.19.468', '1.19.532',
+          '1.19.186'
+        ];
+
+        const rawObjects = await rpcGetObjects([...offerIds, ...poolIds]);
+        fetchedPoolsMap = Object.assign({}, rawObjects);
+
+        // 2. Fetch Active Deals for monitored offers (all pages)
+        const allDeals = [];
+        const dealFetchErrors = new Set();
+        const dealResults = await Promise.all(offerIds.map(oId =>
+          getCreditDealsForOffer(oId).catch(err => {
+            console.warn(`Failed to fetch deals for ${oId}:`, err);
+            dealFetchErrors.add(oId);
+            return [];
+          })
+        ));
+        dealResults.forEach((deals, idx) => {
+          const offerId = offerIds[idx];
+          deals.forEach(d => allDeals.push({ ...d, offerId }));
+        });
+
+        // 3. Gather unique collateral assets from deals
+        const collateralAssetIds = new Set();
+        allDeals.forEach(d => {
+          const assetId = dealCollateralAsset(d);
+          if (assetId) collateralAssetIds.add(assetId);
+        });
+
+        // 4. Fetch all required Asset Objects
+        const baseAssetIds = new Set(['1.3.0', '1.3.5589', '1.3.5902', '1.3.3291', '1.3.5773', '1.3.6139', '1.3.6520', '1.3.6235', '1.3.5649', '1.3.5537', '1.3.1325', '1.3.120', '1.3.6620', ...collateralAssetIds]);
+        for (const o of Object.values(rawObjects)) {
+          if (o && o.asset_a) baseAssetIds.add(o.asset_a);
+          if (o && o.asset_b) baseAssetIds.add(o.asset_b);
+          if (o && o.asset_type) baseAssetIds.add(o.asset_type);
+          if (o && o.share_asset) baseAssetIds.add(o.share_asset);
+        }
+        let assetObjs = await rpcGetObjects(Array.from(baseAssetIds));
+
+        // 5. Dynamically Discover LP backing pools & dynamic asset data IDs
+        const extraPoolIds = new Set();
+        const dynIds = new Set();
+
+        for (const a of Object.values(assetObjs)) {
+          if (a && a.for_liquidity_pool) extraPoolIds.add(a.for_liquidity_pool);
+          if (a && a.dynamic_asset_data_id) dynIds.add(a.dynamic_asset_data_id);
+        }
+
+        const missingPoolIds = Array.from(extraPoolIds).filter(id => !fetchedPoolsMap[id]);
+        if (missingPoolIds.length > 0) {
+          const extraPoolObjs = await rpcGetObjects(missingPoolIds);
+          fetchedPoolsMap = Object.assign({}, fetchedPoolsMap, extraPoolObjs);
+          for (const p of Object.values(extraPoolObjs)) {
+            if (p && p.asset_a) baseAssetIds.add(p.asset_a);
+            if (p && p.asset_b) baseAssetIds.add(p.asset_b);
+          }
+        }
+
+        // Fetch any missing underlying assets for newly discovered pools
+        const missingAssetIds = Array.from(baseAssetIds).filter(id => !assetObjs[id]);
+        if (missingAssetIds.length > 0) {
+          const extraAssetObjs = await rpcGetObjects(missingAssetIds);
+          assetObjs = Object.assign({}, assetObjs, extraAssetObjs);
+          for (const a of Object.values(extraAssetObjs)) {
+            if (a && a.dynamic_asset_data_id) dynIds.add(a.dynamic_asset_data_id);
+          }
+        }
+
+        // Fetch dynamic asset data IDs (for supply calculation)
+        if (dynIds.size > 0) {
+          const dynObjs = await rpcGetObjects(Array.from(dynIds));
+          fetchedDynDataMap = Object.assign({}, fetchedDynDataMap, dynObjs);
+        }
+
+        const priceCache = new Map();
+        const priceOf = (assetId) => {
+          if (!priceCache.has(assetId)) {
+            priceCache.set(assetId, getAssetUsdPrice(assetId, fetchedPoolsMap, assetObjs, fetchedDynDataMap));
+          }
+          return priceCache.get(assetId);
+        };
+
+        // 6. Evaluate every monitored offer (including missing / unpriced ones)
+        const offerRows = MONITORED_OFFERS.map(cfg => {
+          const offerObj = rawObjects[cfg.offerId] || null;
+          const evalRes = offerObj ? calculateOfferUsdValuation(cfg, offerObj, fetchedPoolsMap, assetObjs, fetchedDynDataMap) : null;
+          return { cfg, offerObj, evalRes, deals: [], dealsFailed: dealFetchErrors.has(cfg.offerId) };
+        });
+        const rowsById = Object.fromEntries(offerRows.map(r => [r.cfg.offerId, r]));
+        allDeals.forEach(d => rowsById[d.offerId]?.deals.push(d));
+
+        let totalUsdCredit = 0;
+        let totalAvailableUsdCredit = 0;
+        let totalTakenUsdCredit = 0;
+        let activeOffersCount = 0;
+
+        offerRows.forEach(({ evalRes }) => {
+          if (!evalRes) return;
+          if (evalRes.enabled && (evalRes.total > 0 || evalRes.avail > 0)) activeOffersCount++;
+          totalUsdCredit += evalRes.usdTotal;
+          totalAvailableUsdCredit += evalRes.usdBalance;
+          totalTakenUsdCredit += evalRes.usdTaken;
+        });
+
+        // 7. Deal-level collateral ratios (collateral USD / debt USD), per offer and global.
+        // Deals whose debt or collateral can't be priced are excluded and counted.
+        const collateralGroupMap = {};
+        let dealDebtUsd = 0;
+        let dealCollUsd = 0;
+        let excludedDeals = 0;
+
+        offerRows.forEach(row => {
+          const stats = { dealCount: row.deals.length, debtUsd: 0, collUsd: 0, pricedDeals: 0, unpricedDeals: 0, cr: null };
+          const debtPrice = row.evalRes?.unitPrice || 0;
+
+          row.deals.forEach(d => {
+            const collId = dealCollateralAsset(d);
+            const rawColl = dealCollateralAmount(d);
+            if (collId) {
+              if (!collateralGroupMap[collId]) collateralGroupMap[collId] = { assetId: collId, rawAmount: 0, dealCount: 0 };
+              collateralGroupMap[collId].rawAmount += rawColl;
+              collateralGroupMap[collId].dealCount += 1;
+            }
+
+            const debtAssetId = d.debt_asset || row.offerObj?.asset_type;
+            const debtPrec = assetObjs[debtAssetId]?.precision ?? row.evalRes?.precision ?? 5;
+            const debt = (parseFloat(d.debt_amount) || 0) / Math.pow(10, debtPrec);
+            const collPrice = collId ? priceOf(collId) : 0;
+            const coll = rawColl / Math.pow(10, assetObjs[collId]?.precision ?? 5);
+
+            if (debtPrice > 0 && collPrice > 0 && debt > 0) {
+              const dUsd = debt * debtPrice;
+              const cUsd = coll * collPrice;
+              stats.debtUsd += dUsd;
+              stats.collUsd += cUsd;
+              stats.pricedDeals++;
+            } else {
+              stats.unpricedDeals++;
+            }
+          });
+
+          stats.cr = stats.debtUsd > 0 ? (stats.collUsd / stats.debtUsd) * 100 : null;
+          row.stats = stats;
+          dealDebtUsd += stats.debtUsd;
+          dealCollUsd += stats.collUsd;
+          excludedDeals += stats.unpricedDeals;
+        });
+
+        // 8. Collateral composition by asset
+        let totalCollateralUsd = 0;
+        const collateralBreakdown = [];
+
+        for (const [assetId, group] of Object.entries(collateralGroupMap)) {
+          const meta = assetObjs[assetId] || { symbol: assetId, precision: 5 };
+          const humanAmount = group.rawAmount / Math.pow(10, meta.precision);
+          const unitPrice = priceOf(assetId);
+          const usdVal = humanAmount * unitPrice;
+          totalCollateralUsd += usdVal;
+
+          collateralBreakdown.push({
+            assetId,
+            symbol: scrubAssetSymbol(meta.symbol),
+            humanAmount,
+            unitPrice,
+            usdVal,
+            dealCount: group.dealCount
+          });
+        }
+
+        collateralBreakdown.sort((a, b) => b.usdVal - a.usdVal);
+
+        // 9. Snapshot
+        const now = new Date();
+
+        const globalTakenPct = totalUsdCredit > 0 ? (totalTakenUsdCredit / totalUsdCredit) * 100 : 0;
+        const globalCr = dealDebtUsd > 0 ? (dealCollUsd / dealDebtUsd) * 100 : null;
+
+        const assetGroups = aggregateOffersByAsset(offerRows);
+
+        lastSnapshot = {
+          at: now,
+          node: connectedHost,
+          rows: offerRows,
+          assetGroups,
+          collateralBreakdown,
+          totals: {
+            credit: totalUsdCredit,
+            taken: totalTakenUsdCredit,
+            avail: totalAvailableUsdCredit,
+            takenPct: globalTakenPct,
+            collateral: totalCollateralUsd,
+            cr: globalCr,
+            deals: allDeals.length,
+            excludedDeals,
+            activeOffers: activeOffersCount,
+            totalOffers: MONITORED_OFFERS.length
+          }
+        };
+
+        // 10. Render
+        renderHeroCards(lastSnapshot);
+
+        const creditSlices = assetGroups
+          .filter(g => g.usdTotal > 0)
+          .map(g => ({ label: g.symbol, value: g.usdTotal, color: colorFor(g.assetId) }))
+          .sort((a, b) => b.value - a.value);
+        document.getElementById('credit-comp-total').textContent = `$${Math.round(totalUsdCredit).toLocaleString()}`;
+        renderSvgDonutChart('svg-credit-donut', creditSlices, totalUsdCredit, 'donut-credit-val');
+        renderCreditLegend(assetGroups, totalUsdCredit);
+
+        assignChartColors(collateralBreakdown.map(item => item.assetId));
+        const collateralSlices = collateralBreakdown.map(item => ({
+          label: item.symbol,
+          value: item.usdVal,
+          color: colorFor(item.assetId)
+        }));
+        document.getElementById('collateral-comp-total').textContent = `$${Math.round(totalCollateralUsd).toLocaleString()}`;
+        renderSvgDonutChart('svg-collateral-donut', collateralSlices, totalCollateralUsd, 'donut-collateral-val');
+        renderCollateralLegend(collateralBreakdown, totalCollateralUsd);
+
+        renderDataNotes(lastSnapshot);
+
+        lastSuccessAt = now;
+        setFreshness(true);
+
+      } catch (err) {
+        console.error('Refresh error:', err);
+        setFreshness(false, err);
+      } finally {
+        refreshInFlight = false;
+        btnRefresh.disabled = false;
+        btnRefresh.textContent = '🔄 Refresh Data';
+      }
+    }
+
+    function renderHeroCards(snap) {
+      const t = snap.totals;
+
+      document.getElementById('tvl-total-credit').textContent = fmtUsd(t.credit);
+
+      const takenBadgeEl = document.getElementById('tvl-taken-badge');
+      takenBadgeEl.textContent = `${t.takenPct.toFixed(1)}% Taken`;
+      takenBadgeEl.className = `badge-header badge-taken ${t.takenPct >= 80 ? 'high' : ''}`;
+      takenBadgeEl.title = `$${Math.round(t.taken).toLocaleString()} taken of $${Math.round(t.credit).toLocaleString()} total credit`;
+
+      const utilBarEl = document.getElementById('tvl-utilization-bar');
+      utilBarEl.style.width = `${Math.min(100, Math.max(0, t.takenPct))}%`;
+      utilBarEl.className = `utilization-bar-fill ${t.takenPct >= 80 ? 'high' : ''}`;
+
+      document.getElementById('tvl-sub-offers').innerHTML = `
+        <span style="color: var(--primary); font-weight: 600;">${fmtUsd(t.taken)} Taken</span> &bull;
+        <span style="color: var(--text-muted);">${fmtUsd(t.avail)} Available</span>
+      `;
+
+      document.getElementById('tvl-active-badge').textContent = `${t.activeOffers} / ${t.totalOffers} Active Offers`;
+
+      document.getElementById('tvl-total-collateral').textContent = fmtUsd(t.collateral);
+
+      const crBadgeEl = document.getElementById('tvl-collateral-ratio-badge');
+      if (t.cr !== null) {
+        crBadgeEl.textContent = `${t.cr.toFixed(1)}% Deal CR`;
+        crBadgeEl.className = `badge-header badge-ratio ${t.cr < CR_FLOOR_PCT ? 'warning' : ''}`;
+        crBadgeEl.title = `Collateral / debt across priced deals at spot pool prices (Benchmark floor: ${CR_FLOOR_PCT}%)`;
+      } else {
+        crBadgeEl.textContent = t.collateral > 0 ? '100%+ (No Debt)' : '— Ratio';
+        crBadgeEl.className = 'badge-header badge-ratio';
+        crBadgeEl.title = '';
+      }
+
+      const ratioDesc = t.cr !== null
+        ? `${t.cr.toFixed(1)}% of Deal Debt`
+        : (t.collateral > 0 ? 'Fully Collateralized' : '0.0% Ratio');
+      const excluded = t.excludedDeals > 0
+        ? ` <span style="color: var(--warning);">(${t.excludedDeals} excluded: unpriced)</span>`
+        : '';
+      document.getElementById('tvl-active-deals-count').innerHTML = `
+        <span style="color: var(--accent); font-weight: 600;">${ratioDesc}</span> &bull; Across ${t.deals} active deal${t.deals !== 1 ? 's' : ''}${excluded}
+      `;
+    }
+
+    function renderDataNotes(snap) {
+      const notes = [];
+      const missing = snap.rows.filter(r => !r.offerObj).map(r => `${r.cfg.symbol} ${r.cfg.offerId}`);
+      const unpricedOffers = snap.rows.filter(r => r.evalRes && r.evalRes.unitPrice <= 0).map(r => r.cfg.symbol);
+      const unpricedColl = snap.collateralBreakdown.filter(c => c.unitPrice <= 0).map(c => c.symbol);
+      const failed = snap.rows.filter(r => r.dealsFailed).map(r => r.cfg.symbol);
+
+      if (unpricedOffers.length) notes.push(`Unpriced credit (counted as $0): ${unpricedOffers.join(', ')}`);
+      if (unpricedColl.length) notes.push(`Unpriced collateral (counted as $0): ${unpricedColl.join(', ')}`);
+      if (missing.length) notes.push(`Not found on chain: ${missing.join(', ')}`);
+      if (failed.length) notes.push(`Deal query failed: ${failed.join(', ')}`);
+
+      const el = document.getElementById('data-notes');
+      el.textContent = notes.length ? `⚠ ${notes.join(' · ')}` : '';
+      el.classList.toggle('visible', notes.length > 0);
+    }
+
+    function setFreshness(ok, err) {
+      const el = document.getElementById('last-updated');
+      const main = document.querySelector('main');
+      const fmt = d => d.toLocaleTimeString();
+      if (ok) {
+        el.textContent = `Updated ${fmt(lastSuccessAt)}`;
+        el.className = 'last-updated';
+        el.title = lastSuccessAt.toISOString();
+        main.classList.remove('stale');
+      } else {
+        el.textContent = lastSuccessAt
+          ? `Refresh failed ${fmt(new Date())}: showing ${fmt(lastSuccessAt)} data`
+          : `Refresh failed ${fmt(new Date())}`;
+        el.className = 'last-updated failed';
+        el.title = err?.message || '';
+        if (lastSuccessAt) main.classList.add('stale');
+        updateStatus('error', 'Refresh failed');
+      }
+    }
+
+    function renderCreditLegend(groups, total) {
+      const container = document.getElementById('credit-legend');
+      container.innerHTML = '';
+      if (!groups || groups.length === 0) {
+        container.innerHTML = `<div style="font-size: 0.85rem; color: var(--text-dim); padding: 1rem 0;">No active credit offers.</div>`;
+        return;
+      }
+
+      const sorted = [...groups].sort((a, b) => b.usdTotal - a.usdTotal);
+      sorted.forEach(grp => {
+        const pct = total > 0 ? ((grp.usdTotal / total) * 100).toFixed(1) : '0';
+        const cat = categoryBadge(grp.category);
+
+        const meta = [];
+        meta.push(`${grp.utilizationPct.toFixed(1)}% taken`);
+        if (grp.cr !== null) meta.push(`CR ${grp.cr.toFixed(0)}%`);
+        meta.push(`${grp.dealCount} deal${grp.dealCount !== 1 ? 's' : ''}`);
+
+        // Sub-offers line (Option A: inline breakdown of constituent offers)
+        let subOffersHtml = '';
+        if (grp.offers.length > 1) {
+          const chips = grp.offers.map(o => {
+            const oTotal = o.evalRes ? `$${Math.round(o.evalRes.usdTotal).toLocaleString()}` : '$0';
+            const oTaken = o.evalRes ? `${o.evalRes.utilizationPct.toFixed(0)}% taken` : '0%';
+            const oAcc = o.cfg.account ? ` &bull; ${escapeHtml(o.cfg.account)}` : '';
+            const oDis = o.evalRes && !o.evalRes.enabled ? ' &bull; disabled' : '';
+            return `<span class="sub-offer-chip">#${escapeHtml(o.cfg.offerId)} (${oTotal}, ${oTaken}${oAcc}${oDis})</span>`;
+          });
+          subOffersHtml = `<div class="sub-offers-line">${chips.join(' &bull; ')}</div>`;
+        } else if (grp.offers.length === 1) {
+          const o = grp.offers[0];
+          const oAcc = o.cfg.account ? ` &bull; ${escapeHtml(o.cfg.account)}` : '';
+          const oDis = o.evalRes && !o.evalRes.enabled ? ' &bull; disabled' : '';
+          subOffersHtml = `<div class="sub-offers-line">#${escapeHtml(o.cfg.offerId)}${oAcc}${oDis}</div>`;
+        }
+
+        // Multiple offers indicator badge
+        let accountBadgeHtml = '';
+        if (grp.offers.length > 1) {
+          accountBadgeHtml = `<span class="account-tag">${grp.offers.length} Offers</span>`;
+        }
+
+        const div = document.createElement('div');
+        div.className = 'legend-item';
+        div.innerHTML = `
+          <div class="legend-label-group">
+            <span class="legend-color-dot" style="background: ${colorFor(grp.assetId)};"></span>
+            <div>
+              <div>
+                <span style="font-weight: 600; color: var(--text-main);">${escapeHtml(grp.symbol)}</span>
+                ${cat.text ? `<span class="category-tag ${cat.cls}">${escapeHtml(cat.text)}</span>` : ''}
+                ${accountBadgeHtml}
+              </div>
+              <div class="legend-meta">${escapeHtml(meta.join(' · '))}</div>
+              ${subOffersHtml}
+            </div>
+          </div>
+          <div class="legend-val-group">
+            <div class="usd">${grp.unitPrice > 0 ? `$${Math.round(grp.usdTotal).toLocaleString()}` : '—'}</div>
+            <div class="pct">${pct}%</div>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function renderCollateralLegend(breakdown, total) {
+      const container = document.getElementById('collateral-legend');
+      container.innerHTML = '';
+
+      if (!breakdown || breakdown.length === 0) {
+        container.innerHTML = `<div style="font-size: 0.85rem; color: var(--text-dim);">No active collateral deals.</div>`;
+        return;
+      }
+
+      breakdown.forEach(item => {
+        const pct = total > 0 ? ((item.usdVal / total) * 100).toFixed(1) : '0';
+        const valStr = item.unitPrice > 0
+          ? fmtUsd(item.usdVal)
+          : `<span style="color: var(--warning);" title="No pool price found: counted as $0">unpriced</span>`;
+
+        const div = document.createElement('div');
+        div.className = 'legend-item';
+        div.innerHTML = `
+          <div class="legend-label-group">
+            <span class="legend-color-dot" style="background: ${colorFor(item.assetId)};"></span>
+            <div>
+              <div style="font-weight: 600; color: var(--text-main);">${escapeHtml(item.symbol)}</div>
+              <div style="font-size: 0.73rem; color: var(--text-dim);">${fmtAmt(item.humanAmount)} ${escapeHtml(item.symbol)} &bull; ${item.dealCount} deal${item.dealCount > 1 ? 's' : ''}</div>
+            </div>
+          </div>
+          <div class="legend-val-group">
+            <div class="usd">${valStr}</div>
+            <div class="pct">${pct}%</div>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function updateStatus(state, text) {
+      const badge = document.getElementById('connection-status');
+      badge.className = `status-badge ${state}`;
+      badge.querySelector('.status-text').textContent = text;
+    }
+
+    // Attach Action Listeners
+    document.getElementById('btn-refresh').addEventListener('click', () => refreshAllData());
+
+    // Auto-refresh (60s) while the tab is visible. refreshAllData reconnects on its
+    // own, so this keeps running after a dropped connection.
+    const AUTO_REFRESH_INTERVAL_MS = 60000;
+    setInterval(() => {
+      if (B95.visible()) refreshAllData();
+    }, AUTO_REFRESH_INTERVAL_MS);
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && (!lastSuccessAt || Date.now() - lastSuccessAt > AUTO_REFRESH_INTERVAL_MS)) {
+        refreshAllData();
+      }
+    });
+
+    // Initial load
+    refreshAllData();
+  </script>
+</body>
+</html>

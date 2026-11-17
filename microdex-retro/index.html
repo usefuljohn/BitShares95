@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../shared/fonts.css">
+  <title>microDEX v1.1.0 — Retro BitShares DEX Terminal</title>
+  <style>
+    :root {
+      --bg: #050505;
+      --surface: #0a0a0a;
+      --card-bg: #0e0e0e;
+      --border: #1e1e1e;
+      --border-accent: rgba(0, 255, 136, 0.3);
+      --green: #00ff88;
+      --green-dim: rgba(0, 255, 136, 0.15);
+      --red: #ff4444;
+      --red-dim: rgba(255, 68, 68, 0.15);
+      --amber: #ffb300;
+      --cyan: #00e5ff;
+      --text: #e0f2fe;
+      --muted: #525252;
+      --font-sans: var(--font-ui);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 15px;
+      line-height: 1.4;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Scanlines effect overlay */
+    body::before {
+      content: " ";
+      display: block;
+      position: fixed;
+      top: 0; left: 0; bottom: 0; right: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+      background-size: 100% 4px;
+      z-index: 9999;
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 18px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 6px;
+    }
+
+    .ascii-title {
+      color: var(--cyan);
+      font-family: var(--font-mono);
+      font-size: clamp(12px, 1.3vw, 17px);
+      line-height: 1.25;
+      white-space: pre;
+      text-shadow: 0 0 12px rgba(0, 229, 255, 0.45);
+      user-select: none;
+    }
+
+    .sub-title {
+      color: var(--cyan);
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+    }
+
+    .header-status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+    }
+
+    .block-clock {
+      color: var(--cyan);
+    }
+
+    .node-pill {
+      font-size: 13px;
+      padding: 3px 10px;
+      border-radius: 2px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .node-pill.online { color: var(--green); border-color: rgba(0, 255, 136, 0.4); }
+    .node-pill.connecting { color: var(--amber); border-color: rgba(255, 179, 0, 0.4); }
+    .node-pill.offline { color: var(--red); border-color: rgba(255, 68, 68, 0.4); }
+
+    /* Seamless Infinite Marquee Ticker Bar */
+    .marquee-container {
+      overflow: hidden;
+      white-space: nowrap;
+      background: #03070d;
+      border-top: 1px solid rgba(0, 229, 255, 0.15);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 0;
+      color: var(--cyan);
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      display: flex;
+    }
+    .marquee-track {
+      display: flex;
+      white-space: nowrap;
+      animation: marquee-infinite 44s linear infinite;
+    }
+    .marquee-group {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      white-space: nowrap;
+      padding-right: 18px;
+    }
+    @keyframes marquee-infinite {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+    .ticker-item { display: inline-flex; gap: 6px; }
+    .ticker-sep { color: var(--amber); opacity: 0.8; font-size: 13px; }
+    .ticker-symbol { color: #ffffff; }
+    .ticker-price { color: var(--cyan); font-family: var(--font-mono); }
+
+    /* Main Grid Layout */
+    .main-layout {
+      flex: 1;
+      display: grid;
+      /* minmax(0, …): wide book numbers scroll inside the book instead of pushing order entry off-screen */
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 0;
+      min-height: 0;
+    }
+
+    /* Left Area: Order Book & Trades */
+    .left-panel {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+    }
+
+    .orderbook-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      flex: 1;
+      min-height: 280px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .book-col {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .book-col:first-child { border-right: 1px solid var(--border); }
+
+    .book-header {
+      padding: 8px 12px;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.02);
+      text-align: center;
+    }
+    .book-header.bids { color: var(--green); border-bottom-color: rgba(0, 255, 136, 0.3); }
+    .book-header.asks { color: var(--red); border-bottom-color: rgba(255, 68, 68, 0.3); }
+
+    .table-wrap {
+      flex: 1;
+      overflow: auto;
+      min-height: 0;
+    }
+
+    table.book-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    table.book-table th {
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      color: var(--muted);
+      font-weight: 400;
+      font-size: 11px;
+      text-transform: uppercase;
+      padding: 5px 8px;
+      text-align: right;
+      border-bottom: 1px solid var(--border);
+    }
+    table.book-table th:first-child { text-align: left; }
+
+    table.book-table td {
+      padding: 4px 8px;
+      text-align: right;
+      cursor: pointer;
+      position: relative;
+    }
+    table.book-table td:first-child { text-align: left; }
+    table.book-table tr:hover { background: rgba(255, 255, 255, 0.04); }
+    /* The desktop's 880 px window: tighter book columns so three numbers fit beside order entry */
+    @media (max-width: 960px) {
+      table.book-table { font-size: 12px; }
+      table.book-table th, table.book-table td { padding-left: 5px; padding-right: 5px; }
+    }
+
+    /* Depth bar fill */
+    .depth-bg {
+      position: absolute;
+      top: 0; bottom: 0;
+      pointer-events: none;
+    }
+    .bids .depth-bg { left: 0; background: var(--green-dim); }
+    .asks .depth-bg { right: 0; background: var(--red-dim); }
+
+    /* Promoted Market & Spread Summary Bar */
+    .market-summary-bar {
+      background: #060d17;
+      border-bottom: 1px solid var(--border);
+      padding: 9px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      color: var(--text);
+      box-shadow: inset 0 0 10px rgba(0, 229, 255, 0.05);
+    }
+    .summary-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .summary-label {
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .summary-value {
+      color: var(--cyan);
+      font-weight: 700;
+    }
+
+    /* Right Panel: Settings & Order Entry */
+    .right-panel {
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 12px;
+      overflow-y: auto;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .card-title {
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--cyan);
+      border-bottom: 1px solid rgba(0, 225, 255, 0.15);
+      padding-bottom: 4px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    input, select {
+      background: #050505;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      padding: 7px 10px;
+      border-radius: 2px;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 6px rgba(0, 255, 136, 0.2);
+    }
+
+    .btn {
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 9px;
+      border-radius: 2px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      background: transparent;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn:active { transform: scale(0.97); }
+
+    .btn-green {
+      color: var(--green);
+      border-color: var(--green);
+      background: rgba(0, 255, 136, 0.05);
+    }
+    .btn-green:hover { background: rgba(0, 255, 136, 0.15); }
+
+    .btn-red {
+      color: var(--red);
+      border-color: var(--red);
+      background: rgba(255, 68, 68, 0.05);
+    }
+    .btn-red:hover { background: rgba(255, 68, 68, 0.15); }
+
+    .btn-amber {
+      color: var(--amber);
+      border-color: var(--amber);
+      background: rgba(255, 179, 0, 0.05);
+    }
+    .btn-amber:hover { background: rgba(255, 179, 0, 0.15); }
+
+    .btn-muted {
+      color: var(--muted);
+      border-color: var(--border);
+    }
+    .btn-muted:hover { color: var(--text); border-color: #333; }
+
+    /* JSON Viewer Panel */
+    .json-box {
+      background: #030303;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 8px;
+      max-height: 180px;
+      overflow-y: auto;
+      font-size: 11px;
+      color: var(--green);
+      white-space: pre-wrap;
+      word-break: break-all;
+      user-select: all;
+    }
+
+    .json-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    /* Transaction: the operations the order buttons add */
+    .bundle-list {
+      background: #030303;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      max-height: 160px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+    .bundle-empty { color: var(--muted); padding: 8px; }
+    .bundle-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .bundle-row:last-child { border-bottom: none; }
+    .bundle-row .op-kind { font-weight: 700; min-width: 40px; }
+    .bundle-row .op-kind.buy { color: var(--green); }
+    .bundle-row .op-kind.sell { color: var(--red); }
+    .bundle-row .op-kind.cancel { color: var(--amber); }
+    .bundle-row .op-desc { flex: 1; overflow-wrap: anywhere; }
+    .bundle-row .op-pair { color: var(--muted); white-space: nowrap; }
+    .bundle-row button {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+    .bundle-row button:hover { color: var(--red); }
+
+    .bundle-status { font-size: 12px; color: var(--cyan); }
+    .bundle-status:empty { display: none; }
+    .bundle-status .warn { color: var(--amber); }
+
+    .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .mini-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--muted);
+      font-family: var(--font-sans);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 2px 8px;
+      cursor: pointer;
+    }
+    .mini-btn:hover { color: var(--text); border-color: #333; }
+
+    details.fold summary {
+      cursor: pointer;
+      color: var(--cyan);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    details.fold[open] summary { margin-bottom: 8px; }
+
+    /* Order entry: Single / Ladder switch, and the ladder's side buttons */
+    .seg {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+    }
+    .seg-btn {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 6px;
+      border-radius: 2px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .seg-btn:hover { color: var(--text); border-color: #333; }
+    .seg-btn[aria-pressed="true"] { color: var(--cyan); border-color: var(--cyan); background: rgba(0, 229, 255, 0.08); }
+    .seg-btn.buy[aria-pressed="true"] { color: var(--green); border-color: var(--green); background: var(--green-dim); }
+    .seg-btn.sell[aria-pressed="true"] { color: var(--red); border-color: var(--red); background: var(--red-dim); }
+    [hidden] { display: none !important; }
+    .hint { color: var(--muted); font-size: 11px; }
+
+    /* Ladder preview: the orders ADD LADDER will add */
+    .ladder-preview {
+      background: #030303;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      font-size: 12px;
+    }
+    .ladder-preview:empty { display: none; }
+    .ladder-preview .lp-rows { max-height: 132px; overflow-y: auto; }
+    .ladder-preview table { width: 100%; border-collapse: collapse; }
+    .ladder-preview th, .ladder-preview td { padding: 2px 8px; text-align: right; white-space: nowrap; }
+    .ladder-preview th { color: var(--muted); font-weight: 400; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; background: #030303; }
+    .ladder-preview .lp-total td { border-top: 1px solid var(--border); color: var(--cyan); }
+    .ladder-preview .lp-note { padding: 4px 8px; color: var(--cyan); border-top: 1px solid var(--border); }
+    .ladder-preview .warn { color: var(--amber); }
+    .ladder-preview.buy td.lp-price { color: var(--green); }
+    .ladder-preview.sell td.lp-price { color: var(--red); }
+
+    /* Pair & account card, folded to a one-line summary once an account is known */
+    details.card > summary {
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    details.card > summary::-webkit-details-marker { display: none; }
+    details.card > summary .card-title { border-bottom: none; padding-bottom: 0; }
+    details.card[open] > summary { border-bottom: 1px solid rgba(0, 225, 255, 0.15); padding-bottom: 4px; }
+    .pair-summary { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pair-summary .edit { color: var(--cyan); margin-left: 6px; }
+    details.card[open] .pair-summary .edit { display: none; }
+
+    /* Short windows (the desktop opens this at 880 × 580): drop the ASCII banner so order entry fits */
+    @media (max-height: 700px) {
+      .ascii-title { display: none; }
+      header { padding: 8px 18px; flex-direction: row; justify-content: center; gap: 18px; white-space: nowrap; }
+      .sub-title { font-size: 14px; }
+      .header-status { font-size: 13px; }
+    }
+
+    footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 8px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <header>
+    <div class="sub-title">Minimalist BitShares Order Book UI 1.1.0</div>
+    <pre class="ascii-title">  ███╗   ███╗██╗ ██████╗██████╗  ██████╗ ██████╗ ███████╗██╗  ██╗
+  ████╗ ████║██║██╔════╝██╔══██╗██╔═══██╗██╔══██╗██╔════╝╚██╗██╔╝
+  ██╔████╔██║██║██║     ██████╔╝██║   ██║██║  ██║█████╗   ╚███╔╝ 
+  ██║╚██╔╝██║██║██║     ██╔══██╗██║   ██║██║  ██║██╔══╝   ██╔██╗ 
+  ██║ ╚═╝ ██║██║╚██████╗██║  ██║╚██████╔╝██████╔╝███████╗██╔╝ ██╗
+  ╚═╝     ╚═╝╚═╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚═╝  ╚═╝</pre>
+
+    <div class="header-status">
+      <span class="block-clock" id="clock-display">Blocktime: --</span>
+      <span>•</span>
+      <span class="node-pill connecting" id="node-status">Node: api.bts.mobi</span>
+    </div>
+  </header>
+
+  <!-- ── Live Cyan Marquee Ticker Bar (Seamless Infinite Dual-Track) ────── -->
+  <div class="marquee-container">
+    <div class="marquee-track" id="marquee-track">
+      <div class="marquee-group" id="ticker-group-1">
+        <span class="ticker-item"><span class="ticker-symbol">STH/USDT:</span> <span class="ticker-price">0.001400</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">BTC/USDT:</span> <span class="ticker-price">63588.67</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">BTS/USDT:</span> <span class="ticker-price">0.001100</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">TWENTIX/BTS:</span> <span class="ticker-price">2956.78</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">RUBLE/BTS:</span> <span class="ticker-price">11.6760</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">XRP/BTS:</span> <span class="ticker-price">1009.63</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">STH/USDT:</span> <span class="ticker-price">0.001400</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">BTC/USDT:</span> <span class="ticker-price">63588.67</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">BTS/USDT:</span> <span class="ticker-price">0.001100</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">TWENTIX/BTS:</span> <span class="ticker-price">2956.78</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">RUBLE/BTS:</span> <span class="ticker-price">11.6760</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">XRP/BTS:</span> <span class="ticker-price">1009.63</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">STH/USDT:</span> <span class="ticker-price">0.001400</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">BTC/USDT:</span> <span class="ticker-price">63588.67</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">BTS/USDT:</span> <span class="ticker-price">0.001100</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">TWENTIX/BTS:</span> <span class="ticker-price">2956.78</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">RUBLE/BTS:</span> <span class="ticker-price">11.6760</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">XRP/BTS:</span> <span class="ticker-price">1009.63</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">STH/USDT:</span> <span class="ticker-price">0.001400</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">BTC/USDT:</span> <span class="ticker-price">63588.67</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">BTS/USDT:</span> <span class="ticker-price">0.001100</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">TWENTIX/BTS:</span> <span class="ticker-price">2956.78</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">RUBLE/BTS:</span> <span class="ticker-price">11.6760</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">XRP/BTS:</span> <span class="ticker-price">1009.63</span></span> <span class="ticker-sep">❖</span>
+      </div>
+      <div class="marquee-group" id="ticker-group-2">
+        <span class="ticker-item"><span class="ticker-symbol">STH/USDT:</span> <span class="ticker-price">0.001400</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">BTC/USDT:</span> <span class="ticker-price">63588.67</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">BTS/USDT:</span> <span class="ticker-price">0.001100</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">TWENTIX/BTS:</span> <span class="ticker-price">2956.78</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">RUBLE/BTS:</span> <span class="ticker-price">11.6760</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">XRP/BTS:</span> <span class="ticker-price">1009.63</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">STH/USDT:</span> <span class="ticker-price">0.001400</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">BTC/USDT:</span> <span class="ticker-price">63588.67</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">BTS/USDT:</span> <span class="ticker-price">0.001100</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">TWENTIX/BTS:</span> <span class="ticker-price">2956.78</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">RUBLE/BTS:</span> <span class="ticker-price">11.6760</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">XRP/BTS:</span> <span class="ticker-price">1009.63</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">STH/USDT:</span> <span class="ticker-price">0.001400</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">BTC/USDT:</span> <span class="ticker-price">63588.67</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">BTS/USDT:</span> <span class="ticker-price">0.001100</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">TWENTIX/BTS:</span> <span class="ticker-price">2956.78</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">RUBLE/BTS:</span> <span class="ticker-price">11.6760</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">XRP/BTS:</span> <span class="ticker-price">1009.63</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">STH/USDT:</span> <span class="ticker-price">0.001400</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">BTC/USDT:</span> <span class="ticker-price">63588.67</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">BTS/USDT:</span> <span class="ticker-price">0.001100</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">TWENTIX/BTS:</span> <span class="ticker-price">2956.78</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">RUBLE/BTS:</span> <span class="ticker-price">11.6760</span></span> <span class="ticker-sep">❖</span>
+        <span class="ticker-item"><span class="ticker-symbol">XRP/BTS:</span> <span class="ticker-price">1009.63</span></span> <span class="ticker-sep">❖</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Promoted Market & Spread Summary Bar ────────────────────────────── -->
+  <div class="market-summary-bar">
+    <div class="summary-item">
+      <span class="summary-label">ACTIVE MARKET:</span>
+      <span class="summary-value" id="market-pair-display">BTS / XBTSX.USDT</span>
+    </div>
+    <div class="summary-item" id="spread-display">
+      <span class="summary-label">TOP BID:</span> <span style="color:var(--green)">--</span>
+      <span class="summary-label" style="margin-left:8px;">SPREAD:</span> <span style="color:var(--amber); font-weight:700;">-- (0.00%)</span>
+      <span class="summary-label" style="margin-left:8px;">TOP ASK:</span> <span style="color:var(--red)">--</span>
+    </div>
+  </div>
+
+  <!-- ── Main Grid ───────────────────────────────────────────────────────── -->
+  <div class="main-layout">
+
+    <!-- Left: Bids / Asks -->
+    <div class="left-panel">
+      <div class="orderbook-grid">
+        <!-- Bids -->
+        <div class="book-col bids">
+          <div class="book-header bids">ORDER BOOK - BUY ORDERS</div>
+          <div class="table-wrap">
+            <table class="book-table">
+              <thead>
+                <tr>
+                  <th>CUMULATIVE</th>
+                  <th>VOLUME</th>
+                  <th>PRICE</th>
+                </tr>
+              </thead>
+              <tbody id="bids-body">
+                <tr><td colspan="3" style="text-align:center; color:var(--muted); padding:16px;">Loading order book...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Asks -->
+        <div class="book-col asks">
+          <div class="book-header asks">ORDER BOOK - SELL ORDERS</div>
+          <div class="table-wrap">
+            <table class="book-table">
+              <thead>
+                <tr>
+                  <th>PRICE</th>
+                  <th>VOLUME</th>
+                  <th>CUMULATIVE</th>
+                </tr>
+              </thead>
+              <tbody id="asks-body">
+                <tr><td colspan="3" style="text-align:center; color:var(--muted); padding:16px;">Loading order book...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Settings & Order Entry -->
+    <div class="right-panel">
+
+      <!-- Order Form Card: every button adds operations to the transaction below -->
+      <div class="card">
+        <div class="card-title">Limit Order Entry (.json First)</div>
+
+        <div class="seg" role="group" aria-label="Order entry mode">
+          <button type="button" class="seg-btn" id="mode-btn-single" aria-pressed="true" onclick="setOrderMode('single')">Single</button>
+          <button type="button" class="seg-btn" id="mode-btn-ladder" aria-pressed="false" onclick="setOrderMode('ladder')">Ladder</button>
+        </div>
+
+        <!-- Single: one buy or one sell -->
+        <div id="mode-single" style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+          <!-- Buy Form -->
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <div style="color:var(--green); font-size:10px; font-weight:700;">BUY PRICE:</div>
+            <div class="form-group">
+              <input type="number" id="buy-price" placeholder="0.00000000" step="any">
+            </div>
+            <div style="color:var(--green); font-size:10px; font-weight:700;">BUY AMOUNT:</div>
+            <div class="form-group">
+              <input type="number" id="buy-amount" placeholder="0.00000" step="any">
+            </div>
+            <button class="btn btn-green" onclick="addOrder('buy')" title="Adds this buy order to the transaction">BUY</button>
+          </div>
+
+          <!-- Sell Form -->
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <div style="color:var(--red); font-size:10px; font-weight:700;">SELL PRICE:</div>
+            <div class="form-group">
+              <input type="number" id="sell-price" placeholder="0.00000000" step="any">
+            </div>
+            <div style="color:var(--red); font-size:10px; font-weight:700;">SELL AMOUNT:</div>
+            <div class="form-group">
+              <input type="number" id="sell-amount" placeholder="0.00000" step="any">
+            </div>
+            <button class="btn btn-red" onclick="addOrder('sell')" title="Adds this sell order to the transaction">SELL</button>
+          </div>
+        </div>
+
+        <!-- Ladder: evenly spaced orders from low to high, the total split evenly -->
+        <div id="mode-ladder" style="display:flex; flex-direction:column; gap:6px;" hidden>
+          <input type="hidden" id="ladder-side" value="buy">
+          <div class="seg" role="group" aria-label="Ladder side">
+            <button type="button" class="seg-btn buy" id="ladder-side-buy" aria-pressed="true" onclick="setLadderSide('buy')">Buy</button>
+            <button type="button" class="seg-btn sell" id="ladder-side-sell" aria-pressed="false" onclick="setLadderSide('sell')">Sell</button>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+            <div class="form-group">
+              <label for="ladder-low">Low Price</label>
+              <input type="number" id="ladder-low" placeholder="0.00000000" step="any" oninput="renderLadderPreview()">
+            </div>
+            <div class="form-group">
+              <label for="ladder-high">High Price</label>
+              <input type="number" id="ladder-high" placeholder="0.00000000" step="any" oninput="renderLadderPreview()">
+            </div>
+            <div class="form-group">
+              <label for="ladder-steps">Steps</label>
+              <input type="number" id="ladder-steps" value="5" min="1" max="50" step="1" oninput="renderLadderPreview()">
+            </div>
+            <div class="form-group">
+              <label for="ladder-total">Total (Base)</label>
+              <input type="number" id="ladder-total" placeholder="0.00000" step="any" oninput="renderLadderPreview()">
+            </div>
+          </div>
+          <div class="hint">Click a book row for Low, Shift-click for High. The total is split evenly.</div>
+          <button class="btn btn-green" id="btn-add-ladder" onclick="addLadder()">ADD LADDER</button>
+          <div class="ladder-preview" id="ladder-preview"></div>
+        </div>
+
+        <button class="btn btn-amber" onclick="addCancelAll()" title="Adds a cancel for every open order this account has in the pair set under Pair & Account">CANCEL ALL IN MARKET</button>
+      </div>
+
+      <!-- Trading Pair Settings Card: folds to a summary line once an account is known -->
+      <details class="card" id="pair-card" open>
+        <summary>
+          <span class="card-title">Pair & Account</span>
+          <span class="pair-summary"><span id="pair-summary-text"></span><span class="edit">Edit</span></span>
+        </summary>
+
+        <div class="form-group">
+          <label>Market Presets</label>
+          <select id="select-preset" onchange="onPresetChange(this.value)">
+            <option value="BTS_XBTSX.USDT">BTS / XBTSX.USDT</option>
+            <option value="BTS_XBTSX.USDC">BTS / XBTSX.USDC</option>
+            <option value="BTS_TWENTIX">BTS / TWENTIX</option>
+            <option value="BTS_IOB.XRP">BTS / IOB.XRP</option>
+            <option value="XBTSX.LTC_BTWTY.BTC">XBTSX.LTC / BTWTY.BTC</option>
+            <option value="custom">Custom Pair...</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Account Name</label>
+          <input type="text" id="input-account" value="" placeholder="Log in on the desktop, or type an account">
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+          <div class="form-group">
+            <label>Asset (Base)</label>
+            <input type="text" id="input-asset" value="BTS">
+          </div>
+          <div class="form-group">
+            <label>Currency (Quote)</label>
+            <input type="text" id="input-currency" value="XBTSX.USDT">
+          </div>
+        </div>
+
+        <button class="btn btn-amber" onclick="connectAndPoll()">Connect & Poll Pair</button>
+      </details>
+
+      <!-- Transaction Card: the operations added above, signed as one transaction -->
+      <div class="card">
+        <div class="card-title title-row">
+          <span>Transaction <span id="bundle-count"></span></span>
+          <button class="mini-btn" onclick="clearBundle()" title="Remove every operation">Clear</button>
+        </div>
+        <div class="bundle-list" id="bundle-list"></div>
+        <div class="bundle-status" id="bundle-status"></div>
+        <details class="fold">
+          <summary>Transaction JSON</summary>
+          <div class="json-box" id="json-output"></div>
+        </details>
+        <div class="json-actions" style="display: flex; gap: 4px; flex-wrap: wrap;">
+          <button class="btn btn-blue" id="btn-sign-beet" style="flex: 1; background: #0055aa; color: #fff; font-weight: bold;" onclick="signMicrodexDeeplink()">⚡ Sign in Beet</button>
+          <button class="btn btn-amber" style="flex: 1;" onclick="downloadJsonPayload()">💾 Download .json</button>
+          <button class="btn btn-green" style="flex: 1;" onclick="copyJsonPayload()">📋 Copy JSON</button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ── Footer ─────────────────────────────────────────────────────────── -->
+  <footer>
+    <span>PING 0.04 • LATENCY 0.0 • NODE: api.bts.mobi</span>
+    <span id="ping-display">microDEX Retro v1.1.0</span>
+  </footer>
+
+  <script src="../shared/b95-bridge.js"></script>
+  <script src="../shared/beetvault.js"></script>
+  <script src="orders.js"></script>
+  <!-- ── Inline JavaScript Backbone ─────────────────────────────────────── -->
+  <script>
+    let activeCache = { asset: 'BTS', currency: 'XBTSX.USDT', account: '' };
+    let currentBook = { asks: [], bids: [] };
+    let lastJsonEnvelope = null;
+
+    const PRESETS = {
+      'BTS_XBTSX.USDT': { asset: 'BTS', currency: 'XBTSX.USDT' },
+      'BTS_XBTSX.USDC': { asset: 'BTS', currency: 'XBTSX.USDC' },
+      'BTS_TWENTIX': { asset: 'BTS', currency: 'TWENTIX' },
+      'BTS_IOB.XRP': { asset: 'BTS', currency: 'IOB.XRP' },
+      'XBTSX.LTC_BTWTY.BTC': { asset: 'XBTSX.LTC', currency: 'BTWTY.BTC' }
+    };
+
+    function onPresetChange(val) {
+      if (PRESETS[val]) {
+        document.getElementById('input-asset').value = PRESETS[val].asset;
+        document.getElementById('input-currency').value = PRESETS[val].currency;
+      }
+    }
+
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock-display').textContent = 'Blocktime: ' + now.toLocaleString();
+    }
+    setInterval(updateClock, 1000);
+
+    function rpcQuery(api, method, params) {
+      const apiId = api === 'database' ? 0 : api;
+      return window.B95.rpc(method, params, { api: apiId });
+    }
+
+    function updateNodeStatusDisplay(online, url) {
+      const statusEl = document.getElementById('node-status');
+      if (online) {
+        const display = url ? url.replace(/^wss?:\/\//, '').split('/')[0] : 'Shared Node';
+        statusEl.textContent = 'Node: ' + display;
+      } else {
+        statusEl.textContent = 'Node: Offline';
+      }
+    }
+
+    async function fetchTickerPrices() {
+      // get_ticker(base, quote).latest is quoted as base units per 1 quote unit,
+      // so the displayed BASE/QUOTE price is always 1 / latest.
+      // Pool fallback: pool asset_a must be the base, asset_b the quote.
+      const tickerPairs = [
+        { label: 'STH/USDT', base: '1.3.4099', quote: '1.3.5589', poolId: '1.19.63', precA: 6, precB: 6, fallback: 0.0014 },
+        { label: 'BTC/USDT', base: '1.3.4157', quote: '1.3.5589', poolId: '1.19.160', precA: 8, precB: 6, fallback: 63588.67 },
+        { label: 'BTS/USDT', base: '1.3.0', quote: '1.3.5589', fallback: 0.00108 },
+        { label: 'BTS/USDC', base: '1.3.0', quote: '1.3.5902', fallback: 0.00108 },
+        { label: 'TWENTIX/BTS', base: '1.3.3291', quote: '1.3.0', fallback: 2956.78 },
+        { label: 'XRP/BTS', base: '1.3.5537', quote: '1.3.0', fallback: 1009.63 }
+      ];
+
+      try {
+        // All pairs at once: one round trip instead of one per pair
+        const items = await Promise.all(tickerPairs.map(async (p) => {
+          let val = p.fallback;
+          let live = false;
+          try {
+            const ticker = await rpcQuery('database', 'get_ticker', [p.base, p.quote]);
+            const latest = ticker ? parseFloat(ticker.latest) : 0;
+            if (latest > 0) {
+              val = 1.0 / latest;
+              live = true;
+            }
+          } catch (e) {}
+
+          if (!live && p.poolId) {
+            try {
+              const pools = await rpcQuery('database', 'get_liquidity_pools', [[p.poolId]]);
+              if (pools && pools[0]) {
+                const resA = parseFloat(pools[0].balance_a);
+                const resB = parseFloat(pools[0].balance_b);
+                if (resA > 0 && resB > 0) {
+                  val = (resB / Math.pow(10, p.precB)) / (resA / Math.pow(10, p.precA));
+                  live = true;
+                }
+              }
+            } catch (e) {}
+          }
+
+          const formattedVal = val < 0.01 ? val.toFixed(6) : (val > 1000 ? val.toFixed(2) : val.toFixed(4));
+          return { label: p.label, value: formattedVal };
+        }));
+
+        if (items.length > 0) {
+          const repeatedItems = [...items, ...items, ...items, ...items, ...items];
+          const html = repeatedItems.map(item => `
+            <span class="ticker-item">
+              <span class="ticker-symbol">${item.label}:</span>
+              <span class="ticker-price">${item.value}</span>
+            </span>
+            <span class="ticker-sep">❖</span>
+          `).join('');
+
+          const g1 = document.getElementById('ticker-group-1');
+          const g2 = document.getElementById('ticker-group-2');
+          if (g1) g1.innerHTML = html;
+          if (g2) g2.innerHTML = html;
+        }
+      } catch (e) {}
+    }
+
+    async function fetchOrderBook() {
+      const asset = activeCache.asset;
+      const currency = activeCache.currency;
+
+      try {
+        const book = await rpcQuery('database', 'get_order_book', [currency, asset, 25]);
+        renderBook(book);
+      } catch (e) {
+        console.warn('fetchOrderBook error:', e);
+      }
+    }
+
+    function renderBook(book) {
+      currentBook = book;
+      const bidsBody = document.getElementById('bids-body');
+      const asksBody = document.getElementById('asks-body');
+
+      let maxBidCum = 0, maxAskCum = 0;
+      (book.bids || []).forEach(b => maxBidCum += parseFloat(b.quote));
+      (book.asks || []).forEach(a => maxAskCum += parseFloat(a.quote));
+      maxBidCum = maxBidCum || 1;
+      maxAskCum = maxAskCum || 1;
+
+      // Render Bids
+      if (!book.bids || book.bids.length === 0) {
+        bidsBody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--muted); padding:12px;">No bid orders</td></tr>';
+      } else {
+        let cum = 0;
+        bidsBody.innerHTML = book.bids.map(b => {
+          const p = parseFloat(b.price);
+          const v = parseFloat(b.quote);
+          cum += v;
+          const pct = (cum / maxBidCum) * 100;
+          return `<tr onclick="fillPrice(${p}, event)">
+            <td><div class="depth-bg" style="width:${pct}%"></div><span style="position:relative">${cum.toFixed(5)}</span></td>
+            <td style="color:var(--text)">${v.toFixed(5)}</td>
+            <td style="color:var(--green); font-weight:600;">${p.toFixed(8)}</td>
+          </tr>`;
+        }).join('');
+      }
+
+      // Render Asks
+      if (!book.asks || book.asks.length === 0) {
+        asksBody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--muted); padding:12px;">No ask orders</td></tr>';
+      } else {
+        let cum = 0;
+        asksBody.innerHTML = book.asks.map(a => {
+          const p = parseFloat(a.price);
+          const v = parseFloat(a.quote);
+          cum += v;
+          const pct = (cum / maxAskCum) * 100;
+          return `<tr onclick="fillPrice(${p}, event)">
+            <td style="color:var(--red); font-weight:600;">${p.toFixed(8)}</td>
+            <td style="color:var(--text)">${v.toFixed(5)}</td>
+            <td><div class="depth-bg" style="width:${pct}%"></div><span style="position:relative">${cum.toFixed(5)}</span></td>
+          </tr>`;
+        }).join('');
+      }
+
+      // Calculate Spread & Update Promoted Summary Bar
+      if (book.bids && book.asks && book.bids.length && book.asks.length) {
+        const topBid = parseFloat(book.bids[0].price);
+        const topAsk = parseFloat(book.asks[0].price);
+        const spread = topAsk - topBid;
+        const spreadPct = (spread / topAsk) * 100;
+        document.getElementById('spread-display').innerHTML =
+          `<span class="summary-label">TOP BID:</span> <span style="color:var(--green); font-weight:700;">${topBid.toFixed(8)}</span> ` +
+          `<span class="summary-label" style="margin-left:12px;">SPREAD:</span> <span style="color:var(--amber); font-weight:700;">${spread.toFixed(8)} (${spreadPct.toFixed(3)}%)</span> ` +
+          `<span class="summary-label" style="margin-left:12px;">TOP ASK:</span> <span style="color:var(--red); font-weight:700;">${topAsk.toFixed(8)}</span>`;
+      }
+    }
+
+    // A book row click: both single-order prices, or in Ladder mode the low price (Shift: the high)
+    function fillPrice(p, ev) {
+      if (orderMode === 'ladder') {
+        document.getElementById(ev && ev.shiftKey ? 'ladder-high' : 'ladder-low').value = p.toFixed(8);
+        renderLadderPreview();
+        return;
+      }
+      document.getElementById('buy-price').value = p.toFixed(8);
+      document.getElementById('sell-price').value = p.toFixed(8);
+    }
+
+    // ── Order entry mode: Single or Ladder (remembered in this browser) ──
+    const ORDER_MODE_KEY = 'microdex_order_mode';
+    let orderMode = 'single';
+
+    function setOrderMode(mode) {
+      orderMode = mode === 'ladder' ? 'ladder' : 'single';
+      document.getElementById('mode-single').hidden = orderMode !== 'single';
+      document.getElementById('mode-ladder').hidden = orderMode !== 'ladder';
+      document.getElementById('mode-btn-single').setAttribute('aria-pressed', String(orderMode === 'single'));
+      document.getElementById('mode-btn-ladder').setAttribute('aria-pressed', String(orderMode === 'ladder'));
+      try { localStorage.setItem(ORDER_MODE_KEY, orderMode); } catch (e) { /* per-browser convenience only */ }
+      if (orderMode === 'ladder') renderLadderPreview();
+    }
+
+    function setLadderSide(side) {
+      document.getElementById('ladder-side').value = side;
+      document.getElementById('ladder-side-buy').setAttribute('aria-pressed', String(side === 'buy'));
+      document.getElementById('ladder-side-sell').setAttribute('aria-pressed', String(side === 'sell'));
+      renderLadderPreview();
+    }
+
+    // Asset precision for the preview without waiting on the node: the registry, or an earlier lookup
+    const resolvedAssets = {};
+    function knownAsset(symbol) {
+      const norm = (symbol || '').trim().toUpperCase();
+      return ASSET_REGISTRY[norm] || resolvedAssets[norm] || null;
+    }
+    // Account id for the preview's size check, once a lookup has found it
+    const resolvedAccounts = {};
+
+    // The orders ADD LADDER would add: price, amount and quote total per rung, the sums, and whether
+    // the transaction with them still fits a Sign in Beet link. Nothing here touches the transaction.
+    function renderLadderPreview() {
+      if (orderMode !== 'ladder') return;
+      const side = document.getElementById('ladder-side').value;
+      const btn = document.getElementById('btn-add-ladder');
+      const box = document.getElementById('ladder-preview');
+      box.className = `ladder-preview ${side}`;
+      btn.className = `btn ${side === 'sell' ? 'btn-red' : 'btn-green'}`;
+      const val = (id) => document.getElementById(id).value.trim();
+      const steps = parseInt(val('ladder-steps'), 10);
+      btn.textContent = steps >= 1 ? `ADD ${steps} ${side.toUpperCase()} ORDER${steps === 1 ? '' : 'S'}` : 'ADD LADDER';
+      if (!val('ladder-low') || !val('ladder-high') || !val('ladder-total')) {
+        box.innerHTML = '';
+        return;
+      }
+
+      const baseSym = document.getElementById('input-asset').value.trim().toUpperCase();
+      const quoteSym = document.getElementById('input-currency').value.trim().toUpperCase();
+      const base = knownAsset(baseSym), quote = knownAsset(quoteSym);
+      if (!base || !quote) {
+        box.innerHTML = '<div class="lp-note">Looking up the pair\'s assets…</div>';
+        Promise.all([resolveAsset(baseSym), resolveAsset(quoteSym)])
+          .then(renderLadderPreview)
+          .catch(e => { box.innerHTML = `<div class="lp-note warn">${esc(e.message)}</div>`; });
+        return;
+      }
+
+      let rungs, totals;
+      try {
+        rungs = MicrodexOrders.ladder({ low: val('ladder-low'), high: val('ladder-high'), steps: val('ladder-steps'), total: val('ladder-total') });
+        totals = MicrodexOrders.ladderTotals(rungs, base, quote);
+      } catch (e) {
+        box.innerHTML = `<div class="lp-note warn">${esc(e.message)}</div>`;
+        return;
+      }
+
+      const b = (n) => esc(units(n, base)), q = (n) => esc(units(n, quote));
+      const rows = (side === 'sell' ? totals.rows.slice().reverse() : totals.rows).map(r =>
+        `<tr><td class="lp-price">${esc(r.price)}</td><td>${b(r.base)}</td><td>${q(r.quote)}</td></tr>`).join('');
+      const verb = side === 'buy' ? `Spends ${q(totals.quote)} ${esc(quoteSym)} for ${b(totals.base)} ${esc(baseSym)}`
+        : `Sells ${b(totals.base)} ${esc(baseSym)} for ${q(totals.quote)} ${esc(quoteSym)}`;
+
+      // Would the transaction, with these orders added, still fit a Sign in Beet link?
+      const accountName = document.getElementById('input-account').value.trim().toLowerCase();
+      const sellerId = /^1\.2\.\d+$/.test(accountName) ? accountName : (resolvedAccounts[accountName] || '1.2.1234567');
+      const keep = !bundleSent && (!bundle.length || !bundleSigner || bundleSigner.id === sellerId);
+      let fit = '';
+      try {
+        const ops = rungs.map(r => MicrodexOrders.limitOrderOp({
+          side, price: r.price, amount: r.amount, base, quote, seller: sellerId,
+          expiration: new Date(Date.now() + 86400000 * 30).toISOString().slice(0, 19)
+        }));
+        const all = keep ? [...MicrodexOrders.bundleOps(bundle.filter(e => e.kind === 'cancel').map(e => e.op), bundle.filter(e => e.kind === 'order')), ...ops] : ops;
+        const request = BeetVault.buildRequest(all, { appName: 'microDEX Retro', expiration: new Date(Date.now() + 3600000).toISOString().slice(0, 19) });
+        const inTx = keep && bundle.length ? ` with the ${plural(bundle.length, 'operation')} already in the transaction` : '';
+        fit = BeetVault.deeplinkFits(request)
+          ? `Fits Sign in Beet${inTx}.`
+          : `<span class="warn">Too long for Sign in Beet${inTx}: use Download .json.</span>`;
+      } catch (e) { /* the size check is a hint only */ }
+
+      box.innerHTML = `<div class="lp-rows"><table>
+          <thead><tr><th>Price</th><th>${esc(baseSym)}</th><th>${esc(quoteSym)}</th></tr></thead>
+          <tbody>${rows}</tbody>
+          <tbody class="lp-total"><tr><td>Total</td><td>${b(totals.base)}</td><td>${q(totals.quote)}</td></tr></tbody>
+        </table></div>
+        <div class="lp-note">${verb}. ${fit}</div>`;
+    }
+
+    // ── Pair & Account card: a summary line, folded once an account is known ──
+    let pairCardTouched = false; // the user opened or closed it: leave it as they set it
+    function updatePairSummary() {
+      const asset = document.getElementById('input-asset').value.trim().toUpperCase() || '?';
+      const currency = document.getElementById('input-currency').value.trim().toUpperCase() || '?';
+      const account = document.getElementById('input-account').value.trim();
+      document.getElementById('pair-summary-text').textContent = `${asset} / ${currency} · ${account || 'no account'}`;
+    }
+    function foldPairCardFor(account) {
+      if (!pairCardTouched) document.getElementById('pair-card').open = !account;
+    }
+
+    const ASSET_REGISTRY = {
+      'BTS': { id: '1.3.0', prec: 5 },
+      'XBTSX.USDT': { id: '1.3.5589', prec: 6 },
+      'XBTSX.USDC': { id: '1.3.5902', prec: 6 },
+      'TWENTIX': { id: '1.3.3291', prec: 5 },
+      'XBTSX.LTC': { id: '1.3.4159', prec: 8 },
+      'BTWTY.BTC': { id: '1.3.6637', prec: 8 },
+      'BTWTY.EOS': { id: '1.3.6268', prec: 4 },
+      'XBTSX.WRAM': { id: '1.3.6574', prec: 2 },
+      'XBTSX.STH': { id: '1.3.4099', prec: 6 },
+      'STH': { id: '1.3.4099', prec: 6 },
+      'TWENTIX.BTSPOOL': { id: '1.3.5773', prec: 5 },
+      'IOB.XRP': { id: '1.3.5537', prec: 4 },
+      'XBTSX.BTC': { id: '1.3.4157', prec: 8 }
+    };
+
+    // Throws if the symbol can't be resolved on-chain — never guess an asset
+    // for a transaction.
+    async function resolveAsset(symbol) {
+      const norm = (symbol || '').trim().toUpperCase();
+      if (!norm) throw new Error('No asset symbol given');
+      if (ASSET_REGISTRY[norm]) return ASSET_REGISTRY[norm];
+      if (resolvedAssets[norm]) return resolvedAssets[norm];
+      let res;
+      try {
+        res = await rpcQuery('database', 'lookup_asset_symbols', [[norm]]);
+      } catch (e) {
+        throw new Error(`Asset lookup for "${norm}" failed: ${e.message || e}`);
+      }
+      if (!res || !res[0]) throw new Error(`Unknown asset "${norm}"`);
+      return (resolvedAssets[norm] = { id: res[0].id, prec: res[0].precision });
+    }
+
+    async function resolveAccountId(accountName) {
+      const name = (accountName || '').trim();
+      if (/^1\.2\.\d+$/.test(name)) return name;
+      try {
+        const acc = await rpcQuery('database', 'get_account_by_name', [name]);
+        if (acc && acc.id) return (resolvedAccounts[name.toLowerCase()] = acc.id);
+      } catch (e) {}
+      return null; // never substitute another account
+    }
+
+    async function connectAndPoll() {
+      activeCache.asset = document.getElementById('input-asset').value.trim().toUpperCase();
+      activeCache.currency = document.getElementById('input-currency').value.trim().toUpperCase();
+      activeCache.account = document.getElementById('input-account').value.trim();
+
+      const pairEl = document.getElementById('market-pair-display');
+      if (pairEl) pairEl.textContent = activeCache.asset + ' / ' + activeCache.currency;
+
+      try {
+        await Promise.all([fetchOrderBook(), fetchTickerPrices()]);
+      } catch (e) {
+        console.error('Fetch failed:', e);
+      }
+    }
+
+    // The transaction being built, all signed by bundleSigner ({ id, name }):
+    //   orders  { kind: 'order', side, price, seller, base, quote, op }
+    //   cancels { kind: 'cancel', order, seller, base, quote, op }  (order = the open order cancelled)
+    // Cancels are kept ahead of orders, so the funds they free are there for the new orders.
+    let bundle = [];
+    let bundleSigner = null;
+    // Set once the transaction is signed or downloaded; the next addition starts a new one
+    let bundleSent = false;
+    let bundleCheck = null; // { ops, account } from the last rebuild, for the status line
+    let refreshSeq = 0;
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    }
+
+    // Integer units -> decimal text in the asset's precision
+    function units(amount, asset) {
+      return MicrodexOrders.formatDecimal(BigInt(amount), asset.prec);
+    }
+
+    const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+    // The account that signs: the field as typed now (the desktop login fills it)
+    async function signerIdOrFail() {
+      activeCache.account = document.getElementById('input-account').value.trim().toLowerCase();
+      if (!activeCache.account) {
+        B95.notify('microDEX', 'Log in on the desktop or enter the account that will sign');
+        return null;
+      }
+      const id = await resolveAccountId(activeCache.account);
+      if (!id) B95.notify('microDEX', 'Account "' + activeCache.account + '" not found on BitShares');
+      return id;
+    }
+
+    // Signer and the pair as typed now (not the last polled pair), or null after reporting why
+    async function orderContext() {
+      const sellerId = await signerIdOrFail();
+      if (!sellerId) return null;
+      const assetSym = document.getElementById('input-asset').value.trim().toUpperCase();
+      const currencySym = document.getElementById('input-currency').value.trim().toUpperCase();
+      try {
+        const [base, quote] = await Promise.all([resolveAsset(assetSym), resolveAsset(currencySym)]);
+        if (base.id === quote.id) throw new Error('Asset and currency must be different assets');
+        return {
+          seller: { id: sellerId, name: activeCache.account },
+          base: { ...base, symbol: assetSym },
+          quote: { ...quote, symbol: currencySym }
+        };
+      } catch (e) {
+        B95.notify('microDEX', e.message);
+        return null;
+      }
+    }
+
+    // One limit order; throws if the price or amount can't be expressed on-chain
+    function orderEntry(ctx, side, price, amount) {
+      const expiration = new Date(Date.now() + 86400000 * 30).toISOString().slice(0, 19);
+      const op = MicrodexOrders.limitOrderOp({
+        side, price, amount, base: ctx.base, quote: ctx.quote, seller: ctx.seller.id, expiration
+      });
+      return { kind: 'order', side, price, seller: ctx.seller, base: ctx.base, quote: ctx.quote, op };
+    }
+
+    async function addOrder(side) {
+      const price = document.getElementById(side + '-price').value.trim();
+      const amount = document.getElementById(side + '-amount').value.trim();
+      if (!(parseFloat(price) > 0) || !(parseFloat(amount) > 0)) {
+        B95.notify('microDEX', 'Please enter a valid price and amount');
+        return;
+      }
+      const ctx = await orderContext();
+      if (!ctx) return;
+      try {
+        addToBundle([orderEntry(ctx, side, price, amount)]);
+      } catch (e) {
+        B95.notify('microDEX', e.message);
+      }
+    }
+
+    async function addLadder() {
+      const side = document.getElementById('ladder-side').value;
+      const val = (id) => document.getElementById(id).value.trim();
+      let rungs;
+      try {
+        rungs = MicrodexOrders.ladder({ low: val('ladder-low'), high: val('ladder-high'), steps: val('ladder-steps'), total: val('ladder-total') });
+      } catch (e) {
+        B95.notify('microDEX', e.message);
+        return;
+      }
+      const ctx = await orderContext();
+      if (!ctx) return;
+      try {
+        addToBundle(rungs.map(r => orderEntry(ctx, side, r.price, r.amount)));
+      } catch (e) {
+        B95.notify('microDEX', 'Ladder not added: ' + e.message);
+      }
+    }
+
+    // A cancel for every open order the account has in the pair entered above (either side)
+    async function addCancelAll() {
+      const ctx = await orderContext();
+      if (!ctx) return;
+      let full;
+      try {
+        full = await rpcQuery('database', 'get_full_accounts', [[ctx.seller.id], false]);
+      } catch (e) {
+        B95.notify('microDEX', `Couldn't load ${ctx.seller.name}'s open orders: ${e.message || e}`);
+        return;
+      }
+      const pair = `${ctx.base.symbol}/${ctx.quote.symbol}`;
+      const current = !bundleSent && bundleSigner && bundleSigner.id === ctx.seller.id ? bundle : [];
+      const already = new Set(current.filter(e => e.kind === 'cancel').map(e => e.order.id));
+      const open = MicrodexOrders.ordersInMarkets(full && full[0] && full[0][1].limit_orders, [[ctx.base.id, ctx.quote.id]]);
+      const orders = open.filter(o => !already.has(o.id));
+      if (!orders.length) {
+        B95.notify('microDEX', open.length ? `Every open ${pair} order is already cancelled in this transaction` : `No open ${pair} orders for ${ctx.seller.name}`);
+        return;
+      }
+      addToBundle(orders.map(o => ({
+        kind: 'cancel', order: o, seller: ctx.seller, base: ctx.base, quote: ctx.quote,
+        op: MicrodexOrders.cancelOp(ctx.seller.id, o.id)
+      })));
+    }
+
+    // Every operation in one transaction comes from the same account
+    function addToBundle(entries) {
+      const seller = entries[0].seller;
+      if (bundleSent) {
+        bundle = [];
+        bundleSent = false;
+      }
+      if (bundle.length && bundleSigner.id !== seller.id) {
+        if (!confirm(`This transaction holds operations for ${bundleSigner.name}. Clear it and start one for ${seller.name}?`)) return;
+        bundle = [];
+      }
+      bundleSigner = seller;
+      bundle.push(...entries);
+      refreshBundle();
+      renderLadderPreview();
+    }
+
+    function removeFromBundle(i) {
+      bundle.splice(i, 1);
+      bundleSent = false;
+      refreshBundle();
+      renderLadderPreview();
+    }
+
+    function clearBundle() {
+      bundle = [];
+      bundleSent = false;
+      refreshBundle();
+      renderLadderPreview();
+    }
+
+    function renderBundleList() {
+      const list = document.getElementById('bundle-list');
+      document.getElementById('bundle-count').textContent = bundle.length ? `(${plural(bundle.length, 'op')})` : '';
+      if (!bundle.length) {
+        list.innerHTML = '<div class="bundle-empty">// Buy, Sell, Cancel All and Ladder add operations here</div>';
+        return;
+      }
+      list.innerHTML = bundle.map((e, i) => {
+        const pair = `<span class="op-pair">${esc(e.base.symbol)}/${esc(e.quote.symbol)}</span>`;
+        let kind, desc;
+        if (e.kind === 'cancel') {
+          const asset = e.order.sell_price.base.asset_id === e.base.id ? e.base : e.quote;
+          kind = '<span class="op-kind cancel">CNCL</span>';
+          desc = `${esc(e.order.id)}: ${esc(units(e.order.for_sale, asset))} ${esc(asset.symbol)} ${pair}`;
+        } else {
+          const body = e.op[1];
+          const baseAmount = e.side === 'buy' ? body.min_to_receive : body.amount_to_sell;
+          kind = `<span class="op-kind ${e.side}">${e.side.toUpperCase()}</span>`;
+          desc = `${esc(units(baseAmount.amount, e.base))} ${esc(e.base.symbol)} @ ${esc(e.price)} ${pair}`;
+        }
+        return `<div class="bundle-row">${kind}<span class="op-desc">${desc}</span>` +
+          `<button onclick="removeFromBundle(${i})" title="Remove from transaction">×</button></div>`;
+      }).join('');
+    }
+
+    function renderBundleStatus() {
+      const status = document.getElementById('bundle-status');
+      if (!bundle.length || !lastJsonEnvelope) {
+        status.innerHTML = bundle.length ? 'Building...' : '';
+        return;
+      }
+      const cancels = bundle.filter(e => e.kind === 'cancel');
+      const orders = bundle.filter(e => e.kind === 'order');
+      const parts = [cancels.length && plural(cancels.length, 'cancel'), orders.length && plural(orders.length, 'order')].filter(Boolean);
+      let html = `${parts.join(' + ')} for ${esc(bundleSigner.name)} · ` + (BeetVault.deeplinkFits(lastJsonEnvelope)
+        ? 'fits Sign in Beet'
+        : '<span class="warn">too long for Sign in Beet: use Download .json</span>');
+      if (bundleSent) html += '<br><span class="warn">Sent. The next order starts a new transaction.</span>';
+      const account = bundleCheck && bundleCheck.account;
+      if (!account) {
+        html += '<br><span class="warn">⚠ Balances not checked: the node did not answer</span>';
+      } else {
+        const assets = {};
+        for (const e of bundle) { assets[e.base.id] = e.base; assets[e.quote.id] = e.quote; }
+        for (const s of MicrodexOrders.shortfalls(bundleCheck.ops, account.balances, cancels.map(e => e.order))) {
+          const a = assets[s.asset_id];
+          html += `<br><span class="warn">⚠ Sells ${esc(units(s.needed, a))} ${esc(a.symbol)} but only ${esc(units(s.available, a))} is available. The whole transaction will fail.</span>`;
+        }
+      }
+      status.innerHTML = html;
+    }
+
+    // BeetVault request with its expiration taken from chain time
+    async function buildEnvelope(ops) {
+      let chainTime = new Date();
+      try { chainTime = (await rpcQuery('database', 'get_dynamic_global_properties', [])).time; } catch (e) {}
+      return BeetVault.buildRequest(ops, { appName: 'microDEX Retro', expiration: BeetVault.expirationFrom(chainTime) });
+    }
+
+    async function loadAccount(accountId) {
+      try {
+        const full = await rpcQuery('database', 'get_full_accounts', [[accountId], false]);
+        return (full && full[0] && full[0][1]) || null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Redraws the operations and rebuilds the transaction; runs after every change
+    async function refreshBundle() {
+      const run = ++refreshSeq;
+      const cancels = bundle.filter(e => e.kind === 'cancel');
+      const orders = bundle.filter(e => e.kind === 'order');
+      bundle = [...cancels, ...orders];
+      lastJsonEnvelope = null; // nothing to sign until the rebuild finishes
+      renderBundleList();
+      renderBundleStatus();
+      const json = document.getElementById('json-output');
+      if (!bundle.length) {
+        json.textContent = '// No operations yet';
+        return;
+      }
+      json.textContent = '// Building...';
+      const ops = MicrodexOrders.bundleOps(cancels.map(e => e.op), orders);
+      const [envelope, account] = await Promise.all([buildEnvelope(ops), loadAccount(bundleSigner.id)]);
+      if (run !== refreshSeq) return; // superseded by a newer change
+      lastJsonEnvelope = envelope;
+      bundleCheck = { ops, account };
+      json.textContent = JSON.stringify(envelope, null, 2);
+      renderBundleStatus();
+    }
+
+    function markSent() {
+      bundleSent = true;
+      renderBundleStatus();
+    }
+
+    function signMicrodexDeeplink() {
+      if (!lastJsonEnvelope) { B95.notify('microDEX', 'No transaction yet: add an order first.'); return; }
+      if (!BeetVault.launchDeeplink(lastJsonEnvelope)) return;
+      markSent();
+      if (window.B95 && BeetVault.getWalletScheme() === 'rawbeeteos') {
+        B95.notify(
+          'BeetEOS Signing Prompt',
+          'Sent to Beet. Ensure BeetEOS is unlocked and on the "RAW" page to review.'
+        );
+      }
+    }
+
+    function copyJsonPayload() {
+      if (!lastJsonEnvelope) { B95.notify('microDEX', 'No transaction yet: add an order first.'); return; }
+      BeetVault.copyText(JSON.stringify(lastJsonEnvelope, null, 2));
+    }
+
+    function downloadJsonPayload() {
+      if (!lastJsonEnvelope) { B95.notify('microDEX', 'No transaction yet: add an order first.'); return; }
+      if (!BeetVault.downloadRequest(lastJsonEnvelope, `tx_microdex_${Date.now()}.json`, { signer: bundleSigner && bundleSigner.name })) return;
+      markSent();
+    }
+
+    refreshBundle();
+    window.onload = connectAndPoll;
+    // Polling pauses while the browser tab is in the background or the window is minimized
+    setInterval(() => { if (B95.visible()) fetchOrderBook(); }, 3000);
+    setInterval(() => { if (B95.visible()) fetchTickerPrices(); }, 10000);
+
+    // BitShares Workstation desktop login fills the account field until you type your own
+    const accountInput = document.getElementById('input-account');
+    accountInput.addEventListener('input', () => { accountInput.dataset.userEdited = 'true'; });
+
+    // Pair & Account summary follows the fields; the ladder preview follows the pair's precision
+    for (const id of ['input-asset', 'input-currency', 'input-account']) {
+      document.getElementById(id).addEventListener('input', () => { updatePairSummary(); renderLadderPreview(); });
+    }
+    document.getElementById('select-preset').addEventListener('change', () => { updatePairSummary(); renderLadderPreview(); });
+    document.querySelector('#pair-card > summary').addEventListener('click', () => { pairCardTouched = true; });
+    updatePairSummary();
+    foldPairCardFor(accountInput.value.trim());
+    let savedMode = 'single';
+    try { savedMode = localStorage.getItem(ORDER_MODE_KEY) || 'single'; } catch (e) { /* storage unavailable */ }
+    setOrderMode(savedMode);
+    let lastNodeStatus = null;
+    B95.onContext(({ account, node }) => {
+      if (account && !accountInput.dataset.userEdited) {
+        accountInput.value = account.name;
+        activeCache.account = account.name;
+        if (account.id) resolvedAccounts[account.name.toLowerCase()] = account.id;
+        updatePairSummary();
+        foldPairCardFor(account.name);
+        renderLadderPreview();
+      }
+      if (node) {
+        updateNodeStatusDisplay(node.status === 'online', node.url);
+        // The desktop re-sends its context every 20 s; the intervals above do the polling,
+        // so only fetch right away when the node has just come online
+        if (node.status === 'online' && lastNodeStatus !== 'online') {
+          fetchOrderBook();
+          fetchTickerPrices();
+        }
+        lastNodeStatus = node.status;
+      }
+    });
+  </script>
+</body>
+</html>

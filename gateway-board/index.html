@@ -1,0 +1,1743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../shared/fonts.css">
+  <title>Gateway Board</title>
+  <style>
+    /* ── Reset & Variables (Monochrome Cyberpunk) ─────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+    :root {
+      --bg: #07080b;
+      --bg-panel: #0d0f14;
+      --surface: #12151d;
+      --surface2: #181d28;
+      --surface3: #222838;
+      --border: #1f2533;
+      --border-bright: #3b445c;
+      --border-active: #e2e8f0;
+      
+      --text: #f8fafc;
+      --text-dim: #cbd5e1;
+      --text-muted: #64748b;
+      --text-dark: #334155;
+
+      --mono: var(--font-mono);
+      --sans: var(--font-ui);
+
+      --glow: rgba(255, 255, 255, 0.12);
+      --radius: 6px;
+      --radius-sm: 4px;
+      --tr: 150ms ease;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+      background-size: 28px 28px;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 13px;
+      line-height: 1.5;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ──────────────────────────────────────────────────── */
+    header {
+      background: rgba(13, 15, 20, 0.94);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 18px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+    .header-inner {
+      max-width: 1220px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      background: #000;
+      border: 1px solid var(--border-bright);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      box-shadow: 0 0 10px var(--glow);
+    }
+    .brand-name {
+      font-family: var(--mono);
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #fff;
+    }
+    .brand-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+      letter-spacing: 0.02em;
+    }
+
+    .header-telemetry {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-family: var(--mono);
+      padding: 3px 9px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-dim);
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+    .status-pill.online .status-dot {
+      background: #fff;
+      box-shadow: 0 0 6px #fff;
+    }
+    .status-pill.connecting .status-dot {
+      background: #94a3b8;
+    }
+    .status-pill.offline .status-dot {
+      background: #475569;
+    }
+
+    .btn-icon {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      padding: 5px 9px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-family: var(--mono);
+      font-size: 12px;
+      transition: var(--tr);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-icon:hover:not(:disabled) {
+      border-color: var(--border-bright);
+      color: #fff;
+      background: var(--surface2);
+    }
+    .spinning {
+      animation: spin 800ms linear infinite;
+    }
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+
+    /* ── Unit Toggle Bar (BTC vs. Satoshi) ───────────────────────── */
+    .unit-toggle-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 2px 6px;
+    }
+    .unit-toggle-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .unit-toggle-group {
+      display: flex;
+      gap: 2px;
+    }
+    .unit-btn {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 3px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: var(--tr);
+    }
+    .unit-btn:hover {
+      color: var(--text-dim);
+    }
+    .unit-btn.active {
+      background: #fff;
+      color: #000;
+      border-color: #fff;
+      box-shadow: 0 0 8px var(--glow);
+    }
+
+    /* ── Main Layout ─────────────────────────────────────────────── */
+    .container {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 16px 18px 30px;
+      width: 100%;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* ── Hero Price Board ────────────────────────────────────────── */
+    .hero-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #fff, transparent);
+      opacity: 0.4;
+    }
+
+    .ticker-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 14px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+      margin-bottom: 18px;
+    }
+    .ticker-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .ticker-tag-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .ticker-tag {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+    .ticker-price {
+      font-family: var(--mono);
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #fff;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .ticker-unit {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+    .ticker-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+    .ticker-inverse {
+      color: var(--text-dim);
+    }
+    .ticker-metrics {
+      display: flex;
+      gap: 12px;
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+    .ticker-metrics strong {
+      color: var(--text-dim);
+    }
+
+    /* ── Route: one node per asset, arrows between (columns set from the board) ── */
+    .conduit-grid {
+      display: grid;
+      grid-template-columns: var(--conduit-cols, 1fr);
+      align-items: center;
+      gap: 6px;
+    }
+    @media (max-width: 900px) {
+      .conduit-grid {
+        grid-template-columns: 1fr;
+      }
+      .conduit-arrow {
+        transform: rotate(90deg);
+        margin: 2px auto;
+      }
+      .ticker-right {
+        align-items: flex-start;
+      }
+    }
+
+    .node-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      transition: var(--tr);
+    }
+    .node-box:hover {
+      border-color: var(--border-bright);
+    }
+    .node-box.hub {
+      background: var(--surface2);
+      border-color: var(--border-bright);
+    }
+    .node-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .node-sym {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .node-id {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      background: var(--bg);
+      padding: 1px 4px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+    }
+    .node-stat-label {
+      font-size: 10px;
+      font-family: var(--mono);
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+    }
+    .node-stat-val {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-dim);
+    }
+
+    .conduit-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-family: var(--mono);
+    }
+
+    /* One telemetry card per pool */
+    .pool-leg-grid {
+      display: grid;
+      grid-template-columns: repeat(var(--legs, 3), 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+    @media (max-width: 800px) {
+      .pool-leg-grid { grid-template-columns: 1fr; }
+    }
+    .pool-leg-card {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+    .leg-item-title {
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      font-size: 10px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .leg-ratio-row {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-dim);
+      padding: 2px 0;
+    }
+    .leg-reserves {
+      color: var(--text-muted);
+      font-size: 10px;
+      margin-top: 4px;
+      border-top: 1px dashed var(--border);
+      padding-top: 4px;
+    }
+
+    .ratio-formula-bar {
+      margin-top: 14px;
+      padding: 8px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .ratio-formula-bar code {
+      color: #fff;
+      font-weight: 600;
+    }
+
+    /* ── Trade Terminal Layout ───────────────────────────────────── */
+    .terminal-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .mode-selector {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 3px;
+      margin-bottom: 18px;
+    }
+    .mode-btn {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 14px;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: var(--tr);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .mode-btn:hover {
+      color: var(--text-dim);
+    }
+    .mode-btn.active {
+      background: #fff;
+      color: #000;
+      border-color: #fff;
+      box-shadow: 0 0 12px var(--glow);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 760px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .field-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .field-label .avail {
+      font-weight: 400;
+      color: var(--text-dim);
+      font-size: 11px;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .input-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      padding: 2px 10px;
+      transition: var(--tr);
+    }
+    .input-box:focus-within {
+      border-color: var(--border-active);
+      box-shadow: 0 0 8px var(--glow);
+    }
+    input[type="text"], input[type="number"] {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: var(--mono);
+      font-size: 15px;
+      color: #fff;
+      padding: 8px 0;
+    }
+    .input-suffix {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      white-space: nowrap;
+      padding-left: 8px;
+    }
+
+    .chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 3px 8px;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: var(--tr);
+    }
+    .chip:hover {
+      border-color: var(--border-bright);
+      color: #fff;
+      background: var(--surface2);
+    }
+
+    .account-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    .account-badge.success {
+      background: rgba(255, 255, 255, 0.06);
+      color: #fff;
+      border: 1px solid var(--border-bright);
+    }
+    .account-badge.loading {
+      color: var(--text-muted);
+    }
+    .account-badge.error {
+      color: #cbd5e1;
+      border: 1px solid #475569;
+    }
+
+    /* ── Chained Route Simulator Table ───────────────────────────── */
+    .route-table-wrap {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow-x: auto;
+      margin: 16px 0;
+      background: var(--bg);
+    }
+    table.route-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: 11px;
+      text-align: left;
+    }
+    table.route-table th {
+      background: var(--surface);
+      color: var(--text-muted);
+      padding: 8px 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      letter-spacing: 0.04em;
+    }
+    table.route-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+    table.route-table tr:last-child td {
+      border-bottom: none;
+    }
+    .impact-warn {
+      color: #fff;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 1px 4px;
+      border-radius: 2px;
+    }
+
+    /* ── Summary & Actions ───────────────────────────────────────── */
+    .execution-summary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .exec-left {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .exec-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    .exec-val {
+      font-family: var(--mono);
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .exec-sub {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .actions-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .btn {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 9px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: var(--tr);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .btn:hover:not(:disabled) {
+      border-color: var(--border-bright);
+      background: var(--surface2);
+      color: #fff;
+    }
+    .btn:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .btn-primary {
+      background: #fff;
+      color: #000;
+      border-color: #fff;
+      box-shadow: 0 0 10px var(--glow);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: #e2e8f0;
+      border-color: #e2e8f0;
+      color: #000;
+    }
+
+    /* ── Logs & JSON Inspector ───────────────────────────────────── */
+    details.json-details {
+      margin-top: 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+    }
+    details.json-details summary {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      outline: none;
+      user-select: none;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    pre.code-preview {
+      margin-top: 8px;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      max-height: 240px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .log-box {
+      margin-top: 14px;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      max-height: 110px;
+      overflow-y: auto;
+      font-family: var(--mono);
+      font-size: 10px;
+    }
+    .log-line {
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+    .log-time {
+      color: #475569;
+    }
+    .log-msg.info { color: var(--text-dim); }
+    .log-msg.success { color: #fff; font-weight: 600; }
+    .log-msg.warning { color: #cbd5e1; text-decoration: underline; }
+    .log-msg.error { color: #94a3b8; font-weight: 700; }
+
+    /* ── Tabs & Shared Account (Gateway Board) ───────────────────── */
+    .header-inner { flex-wrap: wrap; }
+    .tab-bar {
+      max-width: 1220px;
+      margin: 10px auto 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+    }
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .tab {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: var(--tr);
+      display: inline-flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .tab:hover { color: var(--text-dim); border-color: var(--border-bright); }
+    .tab[aria-selected="true"] {
+      background: #fff;
+      color: #000;
+      border-color: #fff;
+      box-shadow: 0 0 8px var(--glow);
+    }
+    .tab-meta {
+      font-size: 10px;
+      font-weight: 400;
+      opacity: 0.7;
+    }
+    .header-account {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 1 420px;
+      min-width: 0;
+    }
+    .header-account .field-label { flex: none; }
+    .header-account .account-badge { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+    .header-account .input-box { flex: 1; min-width: 140px; }
+    .header-account input[type="text"] { font-size: 13px; padding: 5px 0; }
+    .board-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .log-box.shared-log { margin-top: 0; }
+    @media (max-width: 760px) {
+      header { position: static; }
+      .header-account { flex: 1 1 100%; flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header: brand, quote unit, node, refresh; then the board tabs and the shared account -->
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-icon">⚡</div>
+        <div>
+          <div class="brand-name" id="brandName">Gateway Board</div>
+          <div class="brand-sub" id="brandSub"></div>
+        </div>
+      </div>
+      <div class="header-telemetry">
+        <!-- Unit Toggle (boards quoted in BTC) -->
+        <div class="unit-toggle-bar" id="unitToggleBar" hidden>
+          <span class="unit-toggle-label">QUOTE UNIT:</span>
+          <div class="unit-toggle-group">
+            <button type="button" class="unit-btn active" id="btnUnitBtc">BTC</button>
+            <button type="button" class="unit-btn" id="btnUnitSat">SATOSHI</button>
+          </div>
+        </div>
+
+        <div class="status-pill connecting" id="nodePill">
+          <span class="status-dot"></span>
+          <span id="nodeText">Connecting…</span>
+        </div>
+        <button class="btn-icon" id="btnRefresh" title="Refresh Live Reserves" type="button">
+          <span id="refreshIcon">↻</span> Refresh
+        </button>
+      </div>
+    </div>
+    <div class="tab-bar">
+      <nav class="tabs" role="tablist" id="tabList" aria-label="Boards"></nav>
+      <div class="header-account">
+        <label class="field-label" for="accountInput">Signer</label>
+        <div class="input-box">
+          <input type="text" id="accountInput" placeholder="BitShares account name or 1.2.x" autocomplete="off" spellcheck="false" />
+        </div>
+        <span class="account-badge" id="accountStatus">Resolving…</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="boards"></div>
+    <!-- Terminal Logs (all boards) -->
+    <div class="log-box shared-log" id="appLogs"></div>
+  </main>
+
+  <!-- One board. Each tab clones it; data-id becomes id="<board>-<data-id>", data-for its label's for -->
+  <template id="boardTemplate">
+    <!-- Section 1: Hero Price Board & Route -->
+    <section class="hero-card">
+      <div class="ticker-bar">
+        <div class="ticker-left">
+          <div class="ticker-tag-row">
+            <span class="ticker-tag" data-id="tickerTag">Composite Spot Price</span>
+          </div>
+          <div class="ticker-price">
+            <span data-id="spotPriceVal">—.————</span>
+            <span class="ticker-unit" data-id="spotPriceUnit"></span>
+          </div>
+        </div>
+        <div class="ticker-right">
+          <div class="ticker-inverse" data-id="spotInversePrice">—</div>
+          <div class="ticker-metrics" data-id="tickerMetrics"></div>
+        </div>
+      </div>
+
+      <!-- Route: one node per asset, base first -->
+      <div class="conduit-grid" data-id="conduitGrid"></div>
+
+      <!-- One telemetry card per pool -->
+      <div class="pool-leg-grid" data-id="poolLegGrid"></div>
+
+      <div class="ratio-formula-bar">
+        <span data-id="formulaText"></span>
+        <span data-id="telemetryUpdate">Last sync: Pending</span>
+      </div>
+    </section>
+
+    <!-- Section 2: Trade & Bundled Transaction Terminal -->
+    <section class="terminal-card">
+      <!-- Mode Toggle -->
+      <div class="mode-selector">
+        <button class="mode-btn active" data-id="btnModeBuy" type="button">▲ BUY</button>
+        <button class="mode-btn" data-id="btnModeSell" type="button">▼ SELL</button>
+      </div>
+
+      <!-- Form Inputs Grid -->
+      <div class="form-grid">
+        <!-- Quote Amount (spent on BUY, target notional on SELL) -->
+        <div class="field">
+          <label class="field-label" data-for="amountQuoteInput">
+            <span data-id="amountQuoteLabel">Amount to Spend</span>
+            <span class="avail" data-id="availQuoteAction">Balance: —</span>
+          </label>
+          <div class="input-box">
+            <input type="number" data-id="amountQuoteInput" min="0" step="any" />
+            <span class="input-suffix" data-id="amountQuoteSuffix"></span>
+          </div>
+          <div class="chips-row" data-id="chipsQuoteRow"></div>
+          <div class="chips-row" data-id="chipsSatRow" hidden></div>
+        </div>
+
+        <!-- Base Amount (received on BUY, sold on SELL) -->
+        <div class="field">
+          <label class="field-label" data-for="amountBaseInput">
+            <span data-id="amountBaseLabel">Estimated Receive</span>
+            <span class="avail" data-id="availBaseAction">Balance: —</span>
+          </label>
+          <div class="input-box">
+            <input type="number" data-id="amountBaseInput" min="0" step="any" />
+            <span class="input-suffix" data-id="amountBaseSuffix"></span>
+          </div>
+          <div class="chips-row" data-id="chipsBaseRow"></div>
+        </div>
+
+        <!-- Slippage Tolerance -->
+        <div class="field">
+          <label class="field-label" data-for="slippageInput">
+            <span>Slippage Tolerance (%)</span>
+            <span>0.5% (Recommended)</span>
+          </label>
+          <div class="input-box">
+            <input type="number" data-id="slippageInput" value="0.5" min="0.05" max="10.0" step="0.1" />
+            <span class="input-suffix">%</span>
+          </div>
+          <div class="chips-row">
+            <span class="chip" data-slip="0.2">0.2%</span>
+            <span class="chip" data-slip="0.5">0.5%</span>
+            <span class="chip" data-slip="1.0">1.0%</span>
+            <span class="chip" data-slip="2.0">2.0%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Execution Route Simulator (one row per leg) -->
+      <div class="route-table-wrap">
+        <table class="route-table">
+          <thead>
+            <tr>
+              <th>Leg</th>
+              <th>Pool</th>
+              <th>Operation</th>
+              <th>In</th>
+              <th>Expected Out</th>
+              <th>Min Receive</th>
+              <th>Fee</th>
+              <th>Impact</th>
+            </tr>
+          </thead>
+          <tbody data-id="routeTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Execution Summary Bar -->
+      <div class="execution-summary">
+        <div class="exec-left">
+          <div class="exec-label" data-id="summaryHeader">Estimated Receive</div>
+          <div class="exec-val" data-id="summaryMain">—</div>
+          <div class="exec-sub" data-id="summarySub">Minimum guaranteed: —</div>
+        </div>
+        <div class="actions-bar">
+          <button class="btn btn-primary" data-id="btnSignBeet" type="button" disabled>⚡ Sign in Beet</button>
+          <button class="btn" data-id="btnDownloadJson" type="button" disabled>↓ Download JSON</button>
+          <button class="btn" data-id="btnCopyJson" type="button" disabled>⧉ Copy JSON</button>
+        </div>
+      </div>
+
+      <!-- Collapsible Request JSON -->
+      <details class="json-details">
+        <summary data-id="jsonSummary">Inspect BitShares Transaction Bundle (Type 63)</summary>
+        <pre class="code-preview" data-id="jsonPreview">// Awaiting transaction calculation...</pre>
+      </details>
+    </section>
+  </template>
+
+  <script src="../shared/b95-bridge.js"></script>
+  <script src="../shared/beetvault.js"></script>
+  <script src="../shared/pool-math.js"></script>
+  <script src="boards.js"></script>
+  <script>
+  (() => {
+    'use strict';
+
+    const $ = id => document.getElementById(id);
+    const BOARD_KEYS = Object.keys(SWAP_BOARDS);
+    const TAB_KEY = 'gateway_board_tab';         // last tab opened in this browser
+    const ACCOUNT_KEY = 'gateway_board_account'; // last account typed in this browser (standalone)
+
+    function stored(key) {
+      try { return localStorage.getItem(key); } catch { return null; }
+    }
+    function store(key, value) {
+      try { localStorage.setItem(key, value); } catch { /* per-browser convenience only */ }
+    }
+
+    // ── 1. Shared helpers ─────────────────────────────────────────
+    function escapeHtml(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function fmt(n, d = 4) {
+      if (n == null || !isFinite(n)) return '—';
+      return Number(n).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: d });
+    }
+
+    function log(msg, type = 'info') {
+      const box = $('appLogs');
+      if (!box) return;
+      const time = new Date().toLocaleTimeString();
+      const div = document.createElement('div');
+      div.className = 'log-line';
+      div.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-msg ${type}">${escapeHtml(msg)}</span>`;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    const feeText = pool => `${((pool.taker_fee_percent || 0) / 100).toFixed(2)}%`;
+    const accountText = () => $('accountInput').value.trim();
+
+    // ── 2. Shared state: one account, one quote unit, one chain cache for every board ──
+    const ALL_POOLS = [...new Set(BOARD_KEYS.flatMap(k => SWAP_BOARDS[k].pools))];
+    const ALL_ASSET_IDS = [...new Set(BOARD_KEYS.flatMap(k => SWAP_BOARDS[k].route))].map(k => SWAP_ASSETS[k].id);
+
+    const shared = {
+      account: null,
+      unit: 'btc',      // boards quoted in BTC: 'btc' | 'sat'
+      pools: {},
+      assets: {},
+      balances: Object.fromEntries(ALL_ASSET_IDS.map(id => [id, 0n])),
+      dgp: null,
+      syncedAt: null
+    };
+
+    // ── 3. One board ──────────────────────────────────────────────
+    // Draws CFG into its own copy of #boardTemplate. Its elements are looked up by `${key}-<data-id>`,
+    // so the boards share the page without sharing state: each keeps its mode, amounts and slippage.
+    function createBoard(key, CFG, root) {
+      const q = id => document.getElementById(`${key}-${id}`);
+
+      // Route assets base → quote, and the pool between each neighbouring pair
+      const ROUTE = CFG.route.map(k => ({ key: k, ...SWAP_ASSETS[k] }));
+      const BASE = ROUTE[0];
+      const QUOTE = ROUTE[ROUTE.length - 1];
+      const LEGS = CFG.pools.map((pool, i) => ({ pool, from: ROUTE[i], to: ROUTE[i + 1] }));
+      const SELL_PATH = LEGS.map(l => ({ pool: l.pool, sell: l.from, buy: l.to }));              // base → quote
+      const BUY_PATH = LEGS.slice().reverse().map(l => ({ pool: l.pool, sell: l.to, buy: l.from })); // quote → base
+      const HAS_SATS = QUOTE.key === 'BTC';
+      const routeIndex = k => ROUTE.findIndex(a => a.key === k);
+
+      let currentMode = 'buy'; // 'buy' spends quote for base; 'sell' sells base for quote
+      let calcSeq = 0;
+      let activeBundle = null;
+      const blog = (msg, type) => log(`[${CFG.tab}] ${msg}`, type);
+
+      // ── Formatting ──
+      const currentUnit = () => (HAS_SATS ? shared.unit : 'quote'); // keys CFG.spotDp / CFG.inverse
+      const satMode = () => HAS_SATS && shared.unit === 'sat';
+      const isSats = asset => asset.key === 'BTC' && satMode();
+      const toReal = (asset, units) => Number(units) / 10 ** asset.precision;
+      // The quote as the user types it: SATS, BTC, or the quote's symbol
+      const quoteUnit = () => (satMode() ? 'SATS' : HAS_SATS ? 'BTC' : QUOTE.symbol);
+      // Real quote amount <-> what the inputs show (sats in Satoshi mode)
+      const quoteDisplay = real => (satMode() ? real * 1e8 : real);
+      const quoteUnitsFrom = shown => PoolMath.big(Math.round(satMode() ? shown : shown * 10 ** QUOTE.precision));
+
+      // A chain amount (base units) as text: sats, or the asset's display decimals
+      function fmtAmount(asset, units, full = false) {
+        if (isSats(asset)) return `${fmt(Number(units), 0)} sats`;
+        const v = toReal(asset, units);
+        return `${asset.dp >= 6 ? v.toFixed(asset.dp) : fmt(v, asset.dp)} ${full ? asset.symbol : asset.short}`;
+      }
+
+      // An exchange rate: `v` of `asset` (real units)
+      function fmtRate(asset, v) {
+        if (asset.key === 'BTC') return satMode() ? `${fmt(v * 1e8, 2)} sats` : `${v.toFixed(8)} BTC`;
+        return `${fmt(v, v >= 100 ? 2 : v >= 1 ? 4 : 6)} ${asset.short}`;
+      }
+
+      function fmtReserve(asset, v) {
+        if (asset.key === 'BTC') return satMode() ? `${fmt(v * 1e8, 0)} sats` : `${v.toFixed(6)} BTC`;
+        return `${fmt(v, 2)} ${asset.short}`;
+      }
+
+      // A price in the quote (real quote per base)
+      function fmtQuotePrice(v) {
+        if (QUOTE.key === 'USDT') return `$${v.toFixed(4)}`;
+        if (QUOTE.key === 'BTC') return satMode() ? `${fmt(v * 1e8, 1)} sats` : `${v.toFixed(8)} BTC`;
+        return `${fmt(v, 6)} ${QUOTE.short}`;
+      }
+
+      // ── Layout from the board ──
+      function buildLayout() {
+        const hubs = ROUTE.slice(1, -1).map(a => a.short);
+        q('tickerTag').textContent = `Composite Spot Price (${LEGS.length}-Pool via ${hubs.join(' & ')})`;
+
+        q('tickerMetrics').innerHTML = CFG.metrics.map((m, i) => {
+          const label = typeof m === 'string' ? { ask: 'Effective Ask', bid: 'Effective Bid', spread: 'Est. AMM Spread' }[m] : m.label;
+          return `<span>${escapeHtml(label)}: <strong id="${key}-metric${i}">—</strong></span>`;
+        }).join('');
+
+        // Nodes and arrows: n nodes need 2n-1 columns
+        const grid = q('conduitGrid');
+        grid.style.setProperty('--conduit-cols', ROUTE.map(() => 'minmax(140px, 1fr)').join(' 28px '));
+        grid.innerHTML = ROUTE.map((a, i) => `
+          ${i ? '<div class="conduit-arrow">⇄</div>' : ''}
+          <div class="node-box${i > 0 && i < ROUTE.length - 1 ? ' hub' : ''}">
+            <div class="node-header">
+              <span class="node-sym" id="${key}-nodeSym${i}">${escapeHtml(a.symbol)}</span>
+              <span class="node-id">${a.id}</span>
+            </div>
+            <div class="node-stat-label">User Balance</div>
+            <div class="node-stat-val" id="${key}-userBal${i}">— ${escapeHtml(a.short)}</div>
+          </div>`).join('');
+
+        q('poolLegGrid').style.setProperty('--legs', LEGS.length);
+        q('poolLegGrid').innerHTML = LEGS.map((l, i) => `
+          <div class="pool-leg-card">
+            <div class="leg-item-title">
+              <span>Pool ${i + 1}: ${l.pool} (${escapeHtml(l.from.short)} / ${escapeHtml(l.to.short)})</span>
+              <span id="${key}-legFee${i}">Fee: —</span>
+            </div>
+            <div class="leg-ratio-row"><span id="${key}-legRateLabel${i}">1 ${escapeHtml(l.from.short)}:</span><strong id="${key}-legRate${i}">—</strong></div>
+            <div class="leg-ratio-row"><span id="${key}-legInvLabel${i}">1 ${escapeHtml(l.to.short)}:</span><span id="${key}-legInv${i}">—</span></div>
+            <div class="leg-reserves" id="${key}-legReserves${i}">Reserves: —</div>
+          </div>`).join('');
+
+        const factors = LEGS.map(l => `(${l.to.short} / ${l.from.short})`).join(' × ');
+        q('formulaText').innerHTML = `${LEGS.length}-Pool Synthetic Formula: <code>R_rel = ${escapeHtml(factors)} = ${escapeHtml(QUOTE.symbol)} / ${escapeHtml(BASE.symbol)}</code>`;
+        q('jsonSummary').textContent = `Inspect ${LEGS.length}-Op BitShares Transaction Bundle (Type 63)`;
+
+        const chips = (values, label) => values.map(v => `<span class="chip" data-amount="${v}">${label(v)}</span>`).join('') + '<span class="chip" data-max>MAX</span>';
+        q('chipsQuoteRow').innerHTML = chips(CFG.quoteChips, String);
+        if (HAS_SATS) q('chipsSatRow').innerHTML = chips(CFG.satChips, v => fmt(v, 0));
+        q('chipsBaseRow').innerHTML = chips(CFG.baseChips, String);
+        q('amountBaseSuffix').textContent = BASE.short;
+        q('amountBaseInput').placeholder = (0).toFixed(BASE.precision);
+
+        clearRouteTable();
+        updateUnitLabels();
+      }
+
+      // ── Balances ──
+      function renderBalances() {
+        ROUTE.forEach((a, i) => { q(`userBal${i}`).textContent = fmtAmount(a, shared.balances[a.id]); });
+        q('availQuoteAction').textContent = `Balance: ${fmtAmount(QUOTE, shared.balances[QUOTE.id])}`;
+        q('availBaseAction').textContent = `Balance: ${fmtAmount(BASE, shared.balances[BASE.id])}`;
+      }
+
+      // ── Price Board ──
+      const poolsReady = () => LEGS.every(l => shared.pools[l.pool]);
+      const reserve = (pool, asset) => toReal(asset, pool.asset_a === asset.id ? pool.balance_a : pool.balance_b);
+
+      // Units of route[j] one unit of route[i] is worth at the pools' spot ratios
+      function pathRate(i, j) {
+        if (i === j) return 1;
+        if (j < i) { const r = pathRate(j, i); return r > 0 ? 1 / r : 0; }
+        let rate = 1;
+        for (let k = i; k < j; k++) {
+          const p = shared.pools[LEGS[k].pool];
+          const rFrom = reserve(p, LEGS[k].from);
+          rate *= rFrom > 0 ? reserve(p, LEGS[k].to) / rFrom : 0;
+        }
+        return rate;
+      }
+      const spotQuotePerBase = () => pathRate(0, ROUTE.length - 1);
+
+      const swap = (pool, units, asset, slip) => PoolMath.calculatePoolSwap(pool, units, asset.id, slip, shared.assets);
+
+      // Chained legs: leg 1 sells the input; each later leg sells the previous leg's guaranteed minimum, so
+      // the transaction cannot fail at any slippage within tolerance. Expected output is followed alongside.
+      function chain(path, inUnits, slip) {
+        const steps = [];
+        let min = null, exp = null;
+        path.forEach((hop, i) => {
+          const pool = shared.pools[hop.pool];
+          const fromMin = swap(pool, i ? min.minReceive : inUnits, hop.sell, slip);
+          const fromExp = i ? swap(pool, exp.expectedOut, hop.sell, slip) : fromMin;
+          steps.push({ hop, pool, sellUnits: i ? min.minReceive : inUnits, fromMin, fromExp });
+          min = fromMin;
+          exp = fromExp;
+        });
+        return { steps, expectedOut: exp.expectedOut, minReceive: min.minReceive };
+      }
+
+      function renderPriceBoard() {
+        if (!poolsReady()) return;
+        const spot = spotQuotePerBase();
+        const shown = quoteDisplay(spot);
+        const dp = CFG.spotDp[currentUnit()];
+        const quoteName = satMode() ? 'SATS' : QUOTE.symbol;
+
+        q('spotPriceVal').textContent = dp >= 6 ? shown.toFixed(dp) : fmt(shown, dp);
+        q('spotPriceUnit').textContent = `${quoteName} / ${BASE.symbol}`;
+        const inv = CFG.inverse[currentUnit()];
+        q('spotInversePrice').textContent = `${fmt(inv.per, 0)} ${quoteName} ≈ ${fmt(shown > 0 ? inv.per / shown : 0, inv.dp)} ${BASE.symbol}`;
+
+        ROUTE.forEach((a, i) => { q(`nodeSym${i}`).textContent = isSats(a) ? `${a.symbol} (SATS)` : a.symbol; });
+
+        // Per pool: what one unit of each side buys at spot, reserves and fee
+        LEGS.forEach((l, i) => {
+          const p = shared.pools[l.pool];
+          const rFrom = reserve(p, l.from), rTo = reserve(p, l.to);
+          const unitOf = a => (isSats(a) ? 1e-8 : 1); // a rate "per 1 sat" in Satoshi mode
+          q(`legFee${i}`).textContent = `Fee: ${feeText(p)}`;
+          q(`legRateLabel${i}`).textContent = `1 ${isSats(l.from) ? 'sat' : l.from.short}:`;
+          q(`legRate${i}`).textContent = fmtRate(l.to, rFrom > 0 ? (rTo / rFrom) * unitOf(l.from) : 0);
+          q(`legInvLabel${i}`).textContent = `1 ${isSats(l.to) ? 'sat' : l.to.short}:`;
+          q(`legInv${i}`).textContent = fmtRate(l.from, rTo > 0 ? (rFrom / rTo) * unitOf(l.to) : 0);
+          q(`legReserves${i}`).textContent = `Reserves: ${fmtReserve(l.from, rFrom)} ⇄ ${fmtReserve(l.to, rTo)}`;
+        });
+
+        // Effective ask / bid / spread for a CFG.spreadNotional trade, and implied USD prices
+        let ask = null, bid = null, spread = null;
+        try {
+          const notional = CFG.spreadNotional;
+          const quoteIn = PoolMath.big(Math.round(notional * 10 ** QUOTE.precision));
+          const baseGot = toReal(BASE, chain(BUY_PATH, quoteIn, 5n).expectedOut);
+          ask = baseGot > 0 ? notional / baseGot : spot;
+          const baseIn = PoolMath.big(Math.round((notional / (spot || 1)) * 10 ** BASE.precision));
+          const quoteGot = toReal(QUOTE, chain(SELL_PATH, baseIn, 5n).expectedOut);
+          const baseSold = toReal(BASE, baseIn);
+          bid = baseSold > 0 ? quoteGot / baseSold : spot;
+          spread = spot > 0 ? Math.max(0, ((ask - bid) / spot) * 100) : 0;
+        } catch { /* quote preview optional */ }
+
+        CFG.metrics.forEach((m, i) => {
+          let text = '—';
+          if (m === 'ask' && ask != null) text = fmtQuotePrice(ask);
+          else if (m === 'bid' && bid != null) text = fmtQuotePrice(bid);
+          else if (m === 'spread' && spread != null) text = `${spread.toFixed(2)}%`;
+          else if (m.usd) text = `$${fmt(pathRate(routeIndex(m.usd), routeIndex('USDT')), 2)}`;
+          q(`metric${i}`).textContent = text;
+        });
+      }
+
+      // ── Chained Swap Calculation ──
+      function recalcSwap(sourceField = 'quote') {
+        const seq = ++calcSeq;
+        if (!poolsReady()) return;
+
+        const slippagePct = parseFloat(q('slippageInput').value) || 0.5;
+        const slippagePermille = BigInt(Math.max(1, Math.round(slippagePct * 10))); // 0.5% = 5 permille
+        const spotShown = quoteDisplay(spotQuotePerBase());
+
+        let quoteVal = parseFloat(q('amountQuoteInput').value) || 0;
+        let baseVal = parseFloat(q('amountBaseInput').value) || 0;
+
+        // The other field follows the one typed in, at spot
+        if (sourceField === 'quote') {
+          if (quoteVal <= 0) {
+            q('amountBaseInput').value = '';
+            clearRouteTable();
+            return;
+          }
+          baseVal = spotShown > 0 ? quoteVal / spotShown : 0;
+          q('amountBaseInput').value = baseVal > 0 ? baseVal.toFixed(BASE.precision) : '';
+        } else {
+          if (baseVal <= 0) {
+            q('amountQuoteInput').value = '';
+            clearRouteTable();
+            return;
+          }
+          quoteVal = baseVal * spotShown;
+          q('amountQuoteInput').value = quoteVal > 0 ? (satMode() ? String(Math.round(quoteVal)) : quoteVal.toFixed(QUOTE.dp)) : '';
+        }
+
+        try {
+          const buying = currentMode === 'buy';
+          const inUnits = buying ? quoteUnitsFrom(quoteVal) : PoolMath.big(Math.round(baseVal * 10 ** BASE.precision));
+          if (inUnits <= 0n) return;
+          const result = chain(buying ? BUY_PATH : SELL_PATH, inUnits, slippagePermille);
+          const out = buying ? BASE : QUOTE;
+
+          renderRouteTable(result.steps);
+          q('summaryHeader').textContent = 'Estimated Receive';
+          q('summaryMain').textContent = fmtAmount(out, result.expectedOut, true);
+          q('summarySub').textContent = `Guaranteed min: ${fmtAmount(out, result.minReceive, true)} (at ${slippagePct}% slippage)`;
+
+          buildTransactionBundle(seq, result.steps.map(s => ({
+            pool: s.hop.pool, sellSat: s.sellUnits, sellId: s.hop.sell.id, minSat: s.fromMin.minReceive, buyId: s.hop.buy.id
+          })));
+        } catch (err) {
+          blog(`Calculation error: ${err.message}`, 'error');
+        }
+      }
+
+      function renderRouteTable(steps) {
+        q('routeTableBody').innerHTML = steps.map((s, i) => {
+          const impact = (s.fromExp.priceImpactBps / 100).toFixed(2);
+          return `
+          <tr>
+            <td>Leg ${i + 1}</td>
+            <td><code>${s.hop.pool}</code></td>
+            <td>${isSats(s.hop.sell) ? 'sats' : s.hop.sell.short} → ${isSats(s.hop.buy) ? 'sats' : s.hop.buy.short}</td>
+            <td>${fmtAmount(s.hop.sell, s.sellUnits)}${i ? ' (min)' : ''}</td>
+            <td>${fmtAmount(s.hop.buy, s.fromExp.expectedOut)}</td>
+            <td>${fmtAmount(s.hop.buy, s.fromMin.minReceive)}</td>
+            <td>${feeText(s.pool)}</td>
+            <td class="${parseFloat(impact) > 1.0 ? 'impact-warn' : ''}">${impact}%</td>
+          </tr>`;
+        }).join('');
+      }
+
+      function clearRouteTable() {
+        const quoteWord = HAS_SATS ? 'BTC, Satoshi' : QUOTE.short;
+        q('routeTableBody').innerHTML = `
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 14px;">
+              Enter a ${quoteWord} or ${escapeHtml(BASE.short)} amount to simulate ${LEGS.length}-pool chained execution.
+            </td>
+          </tr>`;
+        q('summaryMain').textContent = '—';
+        q('summarySub').textContent = 'Minimum guaranteed: —';
+        q('jsonPreview').textContent = '// Awaiting transaction calculation...';
+        enableActions(false);
+        activeBundle = null;
+      }
+
+      // ── BeetVault Transaction Bundler (Type 63) ──
+      async function buildTransactionBundle(seq, opsPlan) {
+        if (seq !== calcSeq) return;
+        const acctText = accountText();
+        if (!acctText) {
+          q('jsonPreview').textContent = '// Specify a BitShares account to build the transaction request.';
+          enableActions(false);
+          return;
+        }
+
+        try {
+          const [acc, dgp] = await Promise.all([
+            B95.resolveAccount(acctText),
+            shared.dgp || B95.rpc('get_dynamic_global_properties', [], { api: 0 })
+          ]);
+          if (seq !== calcSeq) return;
+
+          const operations = opsPlan.map(leg => [
+            63, // liquidity_pool_exchange
+            {
+              fee: { amount: "0", asset_id: SWAP_ASSETS.BTS.id },
+              account: acc.id,
+              pool: leg.pool,
+              amount_to_sell: { amount: String(leg.sellSat), asset_id: leg.sellId },
+              min_to_receive: { amount: String(leg.minSat), asset_id: leg.buyId },
+              extensions: []
+            }
+          ]);
+
+          const request = BeetVault.buildRequest(operations, {
+            appName: CFG.appName,
+            expiration: BeetVault.expirationFrom(dgp.time)
+          });
+
+          activeBundle = { request, account: acc, opsPlan };
+          q('jsonPreview').textContent = BeetVault.requestJson(request);
+          enableActions(true);
+        } catch (err) {
+          q('jsonPreview').textContent = `// Error preparing transaction: ${err.message}`;
+          enableActions(false);
+        }
+      }
+
+      function enableActions(enabled) {
+        q('btnSignBeet').disabled = !enabled;
+        q('btnDownloadJson').disabled = !enabled;
+        q('btnCopyJson').disabled = !enabled;
+      }
+
+      // ── Unit, Mode & Inputs ──
+      function updateUnitLabels() {
+        const u = quoteUnit();
+        q('btnModeBuy').textContent = `▲ BUY ${BASE.symbol} (SPEND ${u})`;
+        q('btnModeSell').textContent = `▼ SELL ${BASE.symbol} (RECEIVE ${u})`;
+        q('amountQuoteLabel').textContent = currentMode === 'buy' ? `Amount to Spend (${u})` : `Target Notional (${u})`;
+        q('amountBaseLabel').textContent = currentMode === 'buy' ? `Estimated ${BASE.symbol} Receive` : `${BASE.symbol} to Sell`;
+        q('amountQuoteSuffix').textContent = satMode() ? 'SATS' : QUOTE.short;
+        q('amountQuoteInput').placeholder = satMode() ? '0' : (0).toFixed(QUOTE.dp);
+        q('chipsQuoteRow').hidden = satMode();
+        q('chipsSatRow').hidden = !satMode();
+      }
+
+      // The shared unit changed from prevUnit: convert the amount typed here between BTC and Satoshi
+      function convertUnit(prevUnit, unit) {
+        if (!HAS_SATS) return;
+        const curVal = parseFloat(q('amountQuoteInput').value);
+        if (isFinite(curVal) && curVal > 0) {
+          if (prevUnit === 'btc' && unit === 'sat') q('amountQuoteInput').value = Math.round(curVal * 1e8);
+          else if (prevUnit === 'sat' && unit === 'btc') q('amountQuoteInput').value = (curVal / 1e8).toFixed(8);
+        }
+      }
+
+      function setMode(mode) {
+        currentMode = mode;
+        q('btnModeBuy').className = `mode-btn ${mode === 'buy' ? 'active' : ''}`;
+        q('btnModeSell').className = `mode-btn ${mode === 'sell' ? 'active' : ''}`;
+        updateUnitLabels();
+        recalcSwap('quote');
+      }
+
+      // MAX: the whole balance, at full chain precision so it never rounds above what the account holds
+      function fillMax(field) {
+        const asset = field === 'quote' ? QUOTE : BASE;
+        const units = shared.balances[asset.id];
+        const input = field === 'quote' ? q('amountQuoteInput') : q('amountBaseInput');
+        input.value = units > 0n ? (isSats(asset) ? String(units) : toReal(asset, units).toFixed(asset.precision)) : '0';
+        recalcSwap(field);
+      }
+
+      function wireChips(rowId, field) {
+        q(rowId).addEventListener('click', (e) => {
+          const chip = e.target.closest('.chip');
+          if (!chip) return;
+          if (chip.hasAttribute('data-max')) return fillMax(field);
+          (field === 'quote' ? q('amountQuoteInput') : q('amountBaseInput')).value = chip.dataset.amount;
+          recalcSwap(field);
+        });
+      }
+
+      buildLayout();
+
+      q('btnModeBuy').addEventListener('click', () => setMode('buy'));
+      q('btnModeSell').addEventListener('click', () => setMode('sell'));
+      q('amountQuoteInput').addEventListener('input', () => recalcSwap('quote'));
+      q('amountBaseInput').addEventListener('input', () => recalcSwap('base'));
+      q('slippageInput').addEventListener('input', () => recalcSwap('quote'));
+      root.querySelectorAll('[data-slip]').forEach(el => {
+        el.addEventListener('click', () => {
+          q('slippageInput').value = el.getAttribute('data-slip');
+          recalcSwap('quote');
+        });
+      });
+      wireChips('chipsQuoteRow', 'quote');
+      wireChips('chipsSatRow', 'quote');
+      wireChips('chipsBaseRow', 'base');
+      q('availQuoteAction').addEventListener('click', () => fillMax('quote'));
+      q('availBaseAction').addEventListener('click', () => fillMax('base'));
+
+      // BeetVault execution buttons
+      q('btnSignBeet').addEventListener('click', () => {
+        if (!activeBundle) return;
+        const acct = accountText();
+        if (BeetVault.launchDeeplink(activeBundle.request)) {
+          blog(`Sent ${LEGS.length}-op swap request to Beet (${BeetVault.getWalletScheme()}://) for ${acct}.`, 'success');
+          if (window.B95) B95.notify('Beet Deeplink', `Opened ${LEGS.length}-op swap in Beet for ${acct}.`);
+        }
+      });
+
+      q('btnDownloadJson').addEventListener('click', () => {
+        if (!activeBundle) return;
+        const fn = `${CFG.filePrefix}-${currentMode}-${Date.now()}.json`;
+        if (!BeetVault.downloadRequest(activeBundle.request, fn)) return;
+        blog(`Transaction bundle saved as ${fn}`, 'success');
+      });
+
+      q('btnCopyJson').addEventListener('click', async () => {
+        if (!activeBundle) return;
+        try {
+          await navigator.clipboard.writeText(BeetVault.requestJson(activeBundle.request));
+          const btn = q('btnCopyJson');
+          const orig = btn.textContent;
+          btn.textContent = '✓ Copied!';
+          setTimeout(() => { btn.textContent = orig; }, 2000);
+          blog('Transaction JSON copied to clipboard.', 'success');
+        } catch {
+          blog('Failed copying to clipboard; copy from JSON preview.', 'warning');
+        }
+      });
+
+      return {
+        key, CFG, HAS_SATS, root,
+        dirty: false,
+        convertUnit,
+        clear: clearRouteTable,
+        // Everything that depends on the shared state: unit, balances, pools, account
+        render() {
+          this.dirty = false;
+          q('telemetryUpdate').textContent = `Last sync: ${shared.syncedAt || 'Pending'}`;
+          updateUnitLabels();
+          renderBalances();
+          renderPriceBoard();
+          recalcSwap('quote');
+        }
+      };
+    }
+
+    // ── 4. Tabs ───────────────────────────────────────────────────
+    const boards = {};
+    let active = null;
+
+    BOARD_KEYS.forEach(key => {
+      const CFG = SWAP_BOARDS[key];
+      const panel = document.createElement('div');
+      panel.className = 'board-panel';
+      panel.dataset.panel = key;
+      panel.id = `${key}-panel`;
+      panel.setAttribute('role', 'tabpanel');
+      panel.setAttribute('aria-labelledby', `${key}-tab`);
+      panel.hidden = true;
+      const frag = $('boardTemplate').content.cloneNode(true);
+      frag.querySelectorAll('[data-id]').forEach(el => { el.id = `${key}-${el.dataset.id}`; });
+      frag.querySelectorAll('[data-for]').forEach(el => { el.htmlFor = `${key}-${el.dataset.for}`; });
+      panel.appendChild(frag);
+      $('boards').appendChild(panel);
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tab';
+      btn.id = `${key}-tab`;
+      btn.dataset.tab = key;
+      btn.setAttribute('role', 'tab');
+      btn.setAttribute('aria-controls', panel.id);
+      btn.innerHTML = `${escapeHtml(CFG.tab)} <span class="tab-meta">${CFG.pools.length} pools</span>`;
+      btn.addEventListener('click', () => showTab(key));
+      $('tabList').appendChild(btn);
+
+      boards[key] = createBoard(key, CFG, panel);
+    });
+
+    // Draw the visible board now; the others when they are next shown
+    function renderBoards() {
+      Object.values(boards).forEach(b => { b.dirty = b !== active; });
+      active.render();
+    }
+
+    function showTab(key) {
+      if (!boards[key]) key = BOARD_KEYS[0];
+      active = boards[key];
+      const CFG = active.CFG;
+      document.querySelectorAll('[data-tab]').forEach(btn => {
+        const on = btn.dataset.tab === key;
+        btn.setAttribute('aria-selected', String(on));
+        btn.tabIndex = on ? 0 : -1;
+      });
+      document.querySelectorAll('[data-panel]').forEach(el => { el.hidden = el.dataset.panel !== key; });
+      $('unitToggleBar').hidden = !active.HAS_SATS;
+      $('brandSub').textContent = CFG.sub;
+      document.title = `Gateway Board · ${CFG.tab}`;
+      store(TAB_KEY, key);
+      // #<board> is the address of a tab; an old ?board= link has done its job once the tab is open
+      const params = new URLSearchParams(location.search);
+      params.delete('board');
+      const search = params.toString();
+      history.replaceState(null, '', `${location.pathname}${search ? `?${search}` : ''}#${key}`);
+      if (active.dirty) active.render();
+    }
+
+    // Arrow keys move between tabs
+    $('tabList').addEventListener('keydown', (e) => {
+      const step = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+      if (!step) return;
+      const i = BOARD_KEYS.indexOf(active.key);
+      const next = BOARD_KEYS[(i + step + BOARD_KEYS.length) % BOARD_KEYS.length];
+      showTab(next);
+      $(`${next}-tab`).focus();
+      e.preventDefault();
+    });
+    window.addEventListener('hashchange', () => {
+      const key = location.hash.slice(1);
+      if (boards[key] && key !== active.key) showTab(key);
+    });
+
+    // ── 5. Quote unit (shared by the boards quoted in BTC) ────────
+    function setUnit(unit) {
+      if (shared.unit === unit) return;
+      const prevUnit = shared.unit;
+      shared.unit = unit;
+      $('btnUnitBtc').className = `unit-btn ${unit === 'btc' ? 'active' : ''}`;
+      $('btnUnitSat').className = `unit-btn ${unit === 'sat' ? 'active' : ''}`;
+      Object.values(boards).forEach(b => b.convertUnit(prevUnit, unit));
+      renderBoards();
+    }
+    $('btnUnitBtc').addEventListener('click', () => setUnit('btc'));
+    $('btnUnitSat').addEventListener('click', () => setUnit('sat'));
+
+    // ── 6. RPC: every board's pools and assets in one read ────────
+    async function loadPoolData() {
+      $('refreshIcon').classList.add('spinning');
+      try {
+        const res = await B95.rpc('get_objects', [[...ALL_POOLS, ...ALL_ASSET_IDS]], { api: 0 });
+        if (Array.isArray(res)) {
+          res.forEach(obj => {
+            if (!obj) return;
+            if (obj.id.startsWith('1.19.')) shared.pools[obj.id] = obj;
+            if (obj.id.startsWith('1.3.')) shared.assets[obj.id] = obj;
+          });
+        }
+        try {
+          shared.dgp = await B95.rpc('get_dynamic_global_properties', [], { api: 0 });
+        } catch { /* dgp fallback */ }
+        if (shared.account) await fetchBalances();
+        shared.syncedAt = new Date().toLocaleTimeString();
+        renderBoards();
+        log(`Live AMM pool reserves updated (${ALL_POOLS.length} pools).`, 'info');
+      } catch (err) {
+        log(`Failed loading pool data: ${err.message}`, 'error');
+      } finally {
+        $('refreshIcon').classList.remove('spinning');
+      }
+    }
+
+    async function fetchBalances() {
+      if (!shared.account || !shared.account.id) return;
+      try {
+        const bals = await B95.rpc('get_account_balances', [shared.account.id, ALL_ASSET_IDS], { api: 0 });
+        if (Array.isArray(bals)) bals.forEach(b => { shared.balances[b.asset_id] = BigInt(b.amount || 0); });
+      } catch (err) {
+        log(`Balance fetch error: ${err.message}`, 'warning');
+      }
+    }
+
+    $('btnRefresh').addEventListener('click', () => loadPoolData());
+
+    // ── 7. Account (shared by every board) ────────────────────────
+    let accountSeq = 0; // the latest account wins: a desktop login overrides a lookup still in flight
+
+    function setAccountBadge(text, cls) {
+      $('accountStatus').textContent = text;
+      $('accountStatus').className = `account-badge ${cls}`;
+    }
+
+    async function verifyAccount() {
+      const run = ++accountSeq;
+      const val = accountText();
+      if (!val) {
+        setAccountBadge('Enter account', 'error');
+        Object.values(boards).forEach(b => b.clear());
+        return;
+      }
+      setAccountBadge('Verifying…', 'loading');
+      try {
+        const acc = await B95.resolveAccount(val);
+        if (run !== accountSeq) return;
+        shared.account = acc;
+        setAccountBadge(`✓ ${acc.name} (${acc.id})`, 'success');
+        store(ACCOUNT_KEY, val);
+        await fetchBalances();
+        if (run !== accountSeq) return;
+        renderBoards();
+      } catch {
+        if (run !== accountSeq) return;
+        setAccountBadge('Account not found', 'error');
+        Object.values(boards).forEach(b => b.clear());
+      }
+    }
+
+    let acctTimeout = null;
+    $('accountInput').addEventListener('input', () => {
+      clearTimeout(acctTimeout);
+      acctTimeout = setTimeout(verifyAccount, 350);
+    });
+
+    // ── 8. Desktop Context & Boot ─────────────────────────────────
+    function setStatus(status, label) {
+      $('nodePill').className = `status-pill ${status}`;
+      $('nodeText').textContent = label;
+    }
+
+    B95.onContext(async ({ account, node }) => {
+      if (account && (!shared.account || shared.account.name !== account.name)) {
+        const run = ++accountSeq;
+        shared.account = account;
+        $('accountInput').value = account.name;
+        setAccountBadge(`✓ ${account.name} (${account.id})`, 'success');
+        await fetchBalances();
+        if (run === accountSeq) renderBoards();
+      }
+      if (!B95.embedded) return;
+      if (node && node.status === 'online') {
+        setStatus('online', node.url ? node.url.replace('wss://', '').replace(/\/ws$/, '') : 'Online');
+        loadPoolData();
+      } else {
+        setStatus(node?.status === 'offline' ? 'offline' : 'connecting', node?.status === 'offline' ? 'Offline' : 'Connecting…');
+      }
+    });
+
+    // Opening tab: #<board>, then ?board=<board> (old links), then the last tab used here
+    const hashKey = location.hash.slice(1);
+    const queryKey = new URLSearchParams(location.search).get('board');
+    const firstKey = [hashKey, queryKey, stored(TAB_KEY)].find(k => k && boards[k]) || BOARD_KEYS[0];
+    if (queryKey && !boards[queryKey]) log(`Unknown board "${queryKey}"; boards are ${BOARD_KEYS.join(', ')}.`, 'warning');
+    showTab(firstKey);
+    log(`Gateway Board initialized (${BOARD_KEYS.length} boards). Connecting to BitShares network...`, 'info');
+
+    // Standalone: the last account typed here, else one an old board remembered (open tab's first)
+    const legacyKeys = [active.CFG.legacyAccountKey, ...BOARD_KEYS.map(k => SWAP_BOARDS[k].legacyAccountKey)];
+    const saved = [ACCOUNT_KEY, ...legacyKeys, 'iob_account_id'].map(stored).find(Boolean);
+    if (saved && !accountText()) $('accountInput').value = saved;
+
+    if (!B95.embedded) {
+      setStatus('online', 'Direct');
+      if (saved) verifyAccount();
+      loadPoolData();
+    }
+  })();
+  </script>
+</body>
+</html>

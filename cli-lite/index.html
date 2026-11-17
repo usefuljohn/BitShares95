@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../shared/fonts.css">
+  <title>BitShares DEX Pool Statistics &amp; Tx Generator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b0f19;
+      --surface: #111827;
+      --surface2: #1e293b;
+      --surface3: #334155;
+      --border: #1e2d45;
+      --border2: #334155;
+      --btc: #f59e0b;
+      --btc-light: #fbbf24;
+      --btc-glow: rgba(245, 158, 11, 0.2);
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.2);
+      --green: #34d399;
+      --red: #f87171;
+      --yellow: #fbbf24;
+      --purple: #a855f7;
+      --text: #f8fafc;
+      --text-dim: #94a3b8;
+      --text-mute: #64748b;
+      --mono: var(--font-mono);
+      --radius: 10px;
+      --radius-sm: 6px;
+      --tr: 180ms ease;
+    }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+
+    /* Header */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 14px 0;
+      position: sticky; top: 0;
+      background: rgba(11, 15, 25, 0.94);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-icon {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #38bdf8 100%);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: #fff;
+    }
+    .brand-name { font-size: 16px; font-weight: 700; }
+    .brand-sub { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .status-pill {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 600; color: var(--text-dim);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 4px 10px;
+    }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-mute); }
+    .status-pill.connected .status-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-pill.connecting .status-dot { background: var(--yellow); animation: pulse 1s infinite; }
+    .status-pill.error .status-dot { background: var(--red); }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+
+    .node-select {
+      font-size: 11px; color: var(--text-dim);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 5px 8px;
+      cursor: pointer; outline: none;
+    }
+    .btn-refresh {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 600; color: var(--accent);
+      background: transparent; border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); padding: 5px 12px;
+      cursor: pointer; transition: var(--tr);
+    }
+    .btn-refresh:hover:not(:disabled) { background: var(--accent-glow); border-color: var(--accent); }
+    .btn-refresh:disabled { opacity: .45; cursor: not-allowed; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-refresh.spinning svg { animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Summary Bar */
+    .summary-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px; margin: 20px 0;
+    }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px;
+      display: flex; flex-direction: column; gap: 4px; position: relative; overflow: hidden;
+    }
+    .stat-card.btc-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, #d97706, #fbbf24);
+    }
+    .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-mute); }
+    .stat-val { font-size: 24px; font-weight: 800; font-family: var(--mono); }
+    .stat-val.btc { color: var(--btc-light); }
+    .stat-val.green { color: var(--green); }
+    .stat-sub { font-size: 11px; color: var(--text-dim); }
+
+    /* Controls Bar */
+    .controls-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px; margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .tabs-group {
+      display: flex; gap: 4px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 3px;
+    }
+    .tab-btn {
+      font-size: 12px; font-weight: 700; padding: 7px 14px;
+      border: none; background: transparent; color: var(--text-mute);
+      border-radius: 4px; cursor: pointer; transition: var(--tr);
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { background: var(--surface2); color: var(--accent); }
+
+    .search-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 7px 12px; font-size: 12px;
+      color: var(--text); outline: none; min-width: 200px;
+    }
+    .search-box:focus { border-color: var(--accent); }
+
+    /* Table */
+    .table-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; margin-bottom: 24px;
+    }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+    th, td { padding: 11px 14px; border-bottom: 1px solid var(--border); font-family: var(--mono); }
+    th {
+      background: var(--surface2); color: var(--text-dim); font-size: 11px;
+      text-transform: uppercase; font-weight: 700; user-select: none;
+    }
+    th.sortable { cursor: pointer; }
+    th.sortable:hover { color: var(--accent); }
+    tr:hover td { background: rgba(255, 255, 255, 0.02); }
+    tr:last-child td { border-bottom: none; }
+
+    .pool-name-cell { font-family: inherit; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .badge {
+      font-size: 10px; font-family: var(--mono); padding: 2px 6px;
+      border-radius: 4px; background: var(--surface2); border: 1px solid var(--border2); color: var(--text-dim);
+    }
+    .depth-green { color: var(--green); font-weight: 700; }
+    .depth-btc { color: var(--btc-light); }
+    .depth-mute { color: var(--text-mute); }
+    .price-text { color: var(--accent); }
+
+    .btn-action {
+      font-size: 11px; font-weight: 700; padding: 5px 10px;
+      border-radius: 4px; border: 1px solid var(--border2);
+      background: var(--surface2); color: var(--text); cursor: pointer; transition: var(--tr);
+    }
+    .btn-action:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* BTC Compare tab: XBTSX.BTC pool 1.19.58 vs BTWTY.BTC pool 1.19.539 */
+    .stat-card.parity-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, #34d399, #a855f7);
+    }
+    .stat-card.depth-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, #fbbf24, #34d399);
+    }
+    .stat-val.purple { color: var(--purple); }
+    .parity-banner {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 18px; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .parity-badge {
+      font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 4px;
+      font-family: var(--mono);
+    }
+    .parity-badge.neutral { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
+    .parity-badge.premium { background: rgba(52, 211, 153, 0.15); color: var(--green); border: 1px solid var(--green); }
+    .parity-badge.discount { background: rgba(248, 113, 113, 0.15); color: var(--red); border: 1px solid var(--red); }
+    .parity-text { font-size: 13px; color: var(--text-dim); }
+    .parity-text strong { color: var(--text); }
+    .dual-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px; margin-bottom: 24px;
+    }
+    .pool-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px; display: flex; flex-direction: column; gap: 14px;
+    }
+    .pool-card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+    .pool-title { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .pool-desc { font-size: 11px; color: var(--text-mute); margin-top: 2px; }
+    .tag {
+      font-size: 10px; font-family: var(--mono); font-weight: 700; padding: 2px 7px;
+      border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .tag-xbtsx { background: rgba(245, 158, 11, 0.15); color: var(--btc-light); border: 1px solid rgba(245, 158, 11, 0.3); }
+    .tag-btwty { background: rgba(56, 189, 248, 0.15); color: var(--accent); border: 1px solid rgba(56, 189, 248, 0.3); }
+    .pool-metrics-list { display: flex; flex-direction: column; gap: 8px; font-size: 13px; font-family: var(--mono); }
+    .metric-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255, 255, 255, 0.06); padding-bottom: 6px; }
+    .metric-k { color: var(--text-mute); font-family: inherit; font-size: 12px; }
+    .metric-v { font-weight: 600; color: var(--text); }
+    .metric-v.highlight { color: var(--btc-light); font-weight: 700; }
+    .metric-v.green { color: var(--green); }
+    .card-actions { display: flex; gap: 8px; margin-top: 4px; }
+    .card-btn {
+      flex: 1; padding: 8px 12px; font-size: 12px; font-weight: 700; border-radius: var(--radius-sm);
+      cursor: pointer; transition: var(--tr); display: flex; align-items: center; justify-content: center; gap: 6px;
+      border: 1px solid var(--border2); background: var(--surface2);
+    }
+    .card-btn.swap { color: var(--accent); }
+    .card-btn.swap:hover { background: var(--accent-glow); border-color: var(--accent); }
+    .card-btn.deposit { color: var(--text-dim); }
+    .card-btn.deposit:hover { border-color: var(--green); color: var(--green); }
+
+    /* Modal / Drawer for Transaction JSON Generation */
+    .modal-backdrop {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(6px);
+      display: none; align-items: center; justify-content: center; z-index: 200;
+      padding: 20px;
+    }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: var(--radius); width: 100%; max-width: 620px;
+      padding: 24px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    .modal-title { font-size: 16px; font-weight: 700; }
+    .btn-close { background: transparent; border: none; font-size: 20px; color: var(--text-mute); cursor: pointer; }
+    .btn-close:hover { color: var(--text); }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 12px; font-weight: 600; color: var(--text-dim); }
+    .form-group input, .form-group select {
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); color: var(--text); font-size: 13px;
+      padding: 8px 12px; outline: none; font-family: inherit;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      font-size: 13px; font-weight: 600; padding: 8px 16px;
+      border-radius: var(--radius-sm); border: 1px solid transparent;
+      cursor: pointer; transition: var(--tr); outline: none;
+    }
+    .btn.primary { background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%); color: #fff; }
+    .btn.secondary { background: var(--surface2); border-color: var(--border2); color: var(--text); }
+    .btn.secondary:hover { border-color: var(--accent); color: var(--accent); }
+    .btn.copied { background: #166534 !important; border-color: var(--green) !important; color: #fff !important; }
+
+    .code-box {
+      background: #040813; border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); padding: 12px;
+      font-family: var(--mono); font-size: 12px; color: #a5d6ff;
+      max-height: 250px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+    }
+
+    footer { border-top: 1px solid var(--border); padding: 20px 0; margin-top: 40px; font-size: 12px; color: var(--text-mute); }
+    .footer-inner { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="wrap header-inner">
+    <div class="brand">
+      <div class="brand-icon">₿</div>
+      <div>
+        <div class="brand-name">BitShares DEX Pool Statistics</div>
+        <div class="brand-sub">BTC Depth · LP Valuation · Standard JSON Output</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="node-select" id="nodeLabel" title="Node connection (shared with the BitShares Workstation desktop)">—</span>
+      <div class="status-pill connecting" id="statusPill">
+        <div class="status-dot"></div>
+        <span id="statusText">Connecting</span>
+      </div>
+      <button class="btn-refresh" id="refreshBtn">
+        <svg id="refreshIcon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- Summary Cards -->
+  <section class="summary-grid">
+    <div class="stat-card btc-card">
+      <span class="stat-label">Headline BTS / BTC Price</span>
+      <span class="stat-val btc" id="stat-headline-price">— sats</span>
+      <span class="stat-sub">Derived from Reference Pool 1.19.58</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Total BTC Value Staked</span>
+      <span class="stat-val green" id="stat-total-btc">— BTC</span>
+      <span class="stat-sub">Sum of pool depth values across BTC pairs</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Monitored Pools</span>
+      <span class="stat-val" id="stat-pool-count">20 Pools</span>
+      <span class="stat-sub" id="stat-last-time">Waiting for node…</span>
+    </div>
+  </section>
+
+  <!-- Controls Bar -->
+  <div class="controls-bar">
+    <div class="tabs-group">
+      <button class="tab-btn active" id="tab-btc" onclick="setCategory('btc')">BTC Pools (16)</button>
+      <button class="tab-btn" id="tab-other" onclick="setCategory('other')">Other Pools (4)</button>
+      <button class="tab-btn" id="tab-all" onclick="setCategory('all')">All Pools (20)</button>
+      <button class="tab-btn" id="tab-compare" onclick="setCategory('compare')">BTC Compare</button>
+    </div>
+
+    <div style="display:flex; gap:10px; align-items:center;">
+      <input type="text" class="search-box" id="search-input" placeholder="Filter pools (e.g. ETH, XRP)…" />
+      <button class="btn secondary" id="btn-export-json" style="font-size:12px; padding:6px 12px;">Export Table JSON</button>
+    </div>
+  </div>
+
+  <!-- BTC Compare: XBTSX.BTC pool 1.19.58 vs BTWTY.BTC pool 1.19.539 -->
+  <section id="compare-view" style="display:none;">
+    <div class="summary-grid" style="margin-top:0;">
+      <div class="stat-card btc-card" title="Average of both pools' sats/BTS, weighted by each pool's capitalization (2 × its BTS reserve)">
+        <span class="stat-label">BTS / BTC Avg (Cap-Weighted)</span>
+        <span class="stat-val btc" id="cmp-avg-price">— sats</span>
+        <span class="stat-sub" id="cmp-avg-sub">1.19.58 + 1.19.539</span>
+        <span class="stat-sub" id="cmp-avg-weights"></span>
+      </div>
+      <div class="stat-card parity-card">
+        <span class="stat-label">BTWTY / XBTSX Parity</span>
+        <span class="stat-val purple" id="cmp-parity-ratio">—</span>
+        <span class="stat-sub" id="cmp-parity-sub">Price Spread</span>
+      </div>
+      <div class="stat-card depth-card">
+        <span class="stat-label">Combined BTC Depth</span>
+        <span class="stat-val green" id="cmp-total-btc">— BTC</span>
+        <span class="stat-sub" id="cmp-total-usd">— USD Total Staked</span>
+      </div>
+    </div>
+    <div class="parity-banner">
+      <span class="parity-badge neutral" id="parity-badge">SPREAD: —</span>
+      <span class="parity-text" id="parity-description">Analyzing pool prices and cross-pool parity…</span>
+    </div>
+    <div class="dual-grid" id="compare-cards"></div>
+  </section>
+
+  <!-- Table Card -->
+  <div class="table-card" id="table-view">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="sortable" onclick="setSort('name')">Pool Name ↕</th>
+            <th class="sortable" onclick="setSort('depth')" style="text-align:right;">BTC Value Depth ↕</th>
+            <th style="text-align:right;">Asset A Amount</th>
+            <th style="text-align:right;">Asset B Amount</th>
+            <th class="sortable" onclick="setSort('price')" style="text-align:right;">Price (B/A) ↕</th>
+            <th class="sortable" onclick="setSort('lpUsd')" style="text-align:right;">LP Share (USD) ↕</th>
+            <th style="text-align:center;">Action</th>
+          </tr>
+        </thead>
+        <tbody id="pool-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- Transaction Generator Modal (Standard JSON Output) -->
+<div class="modal-backdrop" id="tx-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-pool-title">Pool Operation Tx Builder</span>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+
+    <div class="form-group">
+      <label>Operation Type</label>
+      <select id="modal-op-type" onchange="updateModalForm()">
+        <option value="63" selected>Swap (Op 63: liquidity_pool_exchange)</option>
+        <option value="61">Deposit (Op 61: liquidity_pool_deposit)</option>
+      </select>
+    </div>
+
+    <div class="form-group" id="group-direction">
+      <label>Swap Direction</label>
+      <select id="modal-direction" onchange="calculateModalTx()"></select>
+    </div>
+
+    <div class="form-group">
+      <label id="modal-amount-label">Amount</label>
+      <input type="number" id="modal-amount" step="any" min="0" value="10" oninput="calculateModalTx()" />
+    </div>
+
+    <div class="form-group" id="group-slippage">
+      <label>Slippage Tolerance (%)</label>
+      <input type="number" id="modal-slippage" step="0.1" min="0.1" max="10" value="0.5" oninput="calculateModalTx()" />
+    </div>
+
+    <div class="form-group">
+      <label>BitShares Account (name or 1.2.x ID)</label>
+      <input type="text" id="modal-account" placeholder="e.g. your-account" autocomplete="off" spellcheck="false" oninput="calculateModalTx()" />
+    </div>
+
+    <div id="modal-summary-text" style="font-size:12px; font-family:var(--mono); color:var(--green);"></div>
+
+    <div class="btn-row">
+      <button class="btn primary" id="btn-deeplink-modal" disabled>⚡ Sign in Beet</button>
+      <button class="btn secondary" id="btn-download-modal-json" disabled>💾 Download JSON</button>
+      <button class="btn secondary" id="btn-copy-modal-json" disabled>📋 Copy JSON</button>
+    </div>
+    <div style="font-size:11px; color:var(--text-mute);">⚡ <strong>Sign in Beet</strong> opens your host wallet directly via deeplink. Or <strong>Download JSON</strong> to sign in BeetVault.</div>
+
+    <pre class="code-box" id="modal-tx-preview"></pre>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap footer-inner">
+    <div>BitShares DEX Pool Statistics &amp; Standard Transaction Engine · Single-File Architecture</div>
+    <div id="footer-time" style="font-family:var(--mono);"></div>
+  </div>
+</footer>
+
+<script src="../shared/b95-bridge.js"></script>
+<script src="../shared/beetvault.js"></script>
+<script src="../shared/pool-math.js"></script>
+<script>
+(() => {
+  'use strict';
+
+  // ── 1. Configuration & Pools ────────────────────────────────
+  const BTC_ASSETS = ["XBTSX.BTC", "GDEX.BTC", "HONEST.BTC", "BTWTY.BTC"];
+  const USD_ASSETS = ["USDT", "XBTSX.USDT", "HONEST.USD", "USD", "HONEST.USDT"];
+
+  const XBTSX_POOLS = [
+    { id: "1.19.58",  name: "BTS / XBTSX.BTC", priority: 1 },
+    { id: "1.19.508", name: "XBTSX.BTC / BTWTY.EOS", priority: 2 },
+    { id: "1.19.531", name: "XBTSX.BTC / XBTSX.A", priority: 3 },
+    { id: "1.19.493", name: "XBTSX.BTC / XBTSX.ETH", priority: 4 },
+    { id: "1.19.122", name: "XBTSX.BTC / XBTSX.HIVE", priority: 5 },
+    { id: "1.19.516", name: "XBTSX.BTC / XBTSX.DOGE", priority: 6 },
+    { id: "1.19.170", name: "BTWTY / XBTSX.BTC", priority: 7 },
+    { id: "1.19.443", name: "XBTSX.BTC / HONEST.MONEY", priority: 8 },
+    { id: "1.19.160", name: "XBTSX.BTC / XBTSX.USDT", priority: 9 },
+    { id: "1.19.518", name: "XBTSX.BTC / IOB.XRP", priority: 10 },
+    { id: "1.19.45",  name: "GDEX.BTC / XBTSX.BTC", priority: 11 },
+    { id: "1.19.200", name: "XBTSX.BTC / XBTSX.RUB", priority: 12 },
+    { id: "1.19.442", name: "XBTSX.BTC / HONEST.BTC", priority: 13 },
+    { id: "1.19.526", name: "XBTSX.BTC / XBTSX.ETC", priority: 14 },
+    { id: "1.19.539", name: "BTS / BTWTY.BTC", priority: 15 },
+    { id: "1.19.540", name: "TWENTIX / BTWTY.BTC", priority: 16 }
+  ];
+
+  const OTHER_POOLS = [
+    { id: "1.19.0",  name: "BTS / TWENTIX", priority: 1 },
+    { id: "1.19.44", name: "TWENTIX / IOB.XRP", priority: 2 },
+    { id: "1.19.10", name: "BTS / CNY", priority: 3 },
+    { id: "1.19.15", name: "BTS / USD", priority: 4 }
+  ];
+
+  const ALL_POOLS = [...XBTSX_POOLS, ...OTHER_POOLS];
+
+  // BTC Compare tab: the two BTS / BTC pools side by side (both are in XBTSX_POOLS)
+  const COMPARE_POOLS = [
+    { id: "1.19.58",  tag: "XBTSX Gateway", tagClass: "tag-xbtsx", desc: "XBTS Gateway Anchor Pool" },
+    { id: "1.19.539", tag: "BTWTY Bitcoin", tagClass: "tag-btwty", desc: "BitShares Twenty Ecosystem Pool" }
+  ];
+
+  // ── 2. State & WebSocket RPC ────────────────────────────────
+  let activeCategory = 'btc';
+  let sortBy = 'depth';
+  let sortAsc = false;
+  let searchQuery = '';
+
+  const cache = new Map();
+
+  let poolStats = [];
+  let headlinePriceSats = null;
+  let usdRefs = { usdPerBts: 0, usdPerBtc: 0 };
+  let activeModalPool = null;
+
+  const $ = id => document.getElementById(id);
+
+  function fmtNum(n, d = 4) {
+    if (!isFinite(n) || n === 0) return '0';
+    if (n >= 1000000) return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (n >= 1) return n.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+    return n.toFixed(d);
+  }
+
+  function fmtUsd(n) {
+    if (!isFinite(n) || n <= 0) return '—';
+    if (n >= 1000) return `$${n.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+    if (n >= 1) return `$${n.toFixed(2)}`;
+    if (n >= 0.0001) return `$${n.toFixed(4)}`;
+    return `$${n.toFixed(8)}`;
+  }
+
+  function setStatus(status, label) {
+    const pill = $('statusPill');
+    pill.className = `status-pill ${status}`;
+    $('statusText').textContent = label;
+  }
+
+  // Chain reads go through the desktop's node connection (B95.rpc); popped out,
+  // the bridge connects to a node itself
+  function callRPC(api, method, params) {
+    return B95.rpc(method, params, { api: api === 'database' ? 0 : api });
+  }
+
+  async function getObjects(ids) {
+    const missing = ids.filter(id => !cache.has(id));
+    if (missing.length > 0) {
+      const res = await callRPC("database", "get_objects", [missing]);
+      if (Array.isArray(res)) {
+        res.forEach((obj, idx) => {
+          if (obj) cache.set(missing[idx], obj);
+        });
+      }
+    }
+    const map = {};
+    ids.forEach(id => { if (cache.has(id)) map[id] = cache.get(id); });
+    return map;
+  }
+
+  // A pool's reserves in whole units, using each asset's on-chain precision; null if an asset is missing
+  async function poolBalances(p) {
+    const assets = await getObjects([p.asset_a, p.asset_b]);
+    const a = assets[p.asset_a], b = assets[p.asset_b];
+    if (!a || !b) return null;
+    return [parseInt(p.balance_a, 10) / Math.pow(10, a.precision), parseInt(p.balance_b, 10) / Math.pow(10, b.precision)];
+  }
+
+  // localStorage throws in private windows and with site data blocked; the account field just starts empty
+  function savedAccount() {
+    try { return localStorage.getItem('bts_cli_account'); } catch { return null; }
+  }
+  function saveAccount(name) {
+    try { localStorage.setItem('bts_cli_account', name); } catch { /* not remembered */ }
+  }
+
+  // Market fees the chain takes on a pool swap, as fractions: the sold asset's
+  // maker fee comes off the input and the bought asset's taker fee off the output.
+  // Only assets with the charge_market_fee flag (0x01) charge them.
+  function marketFee(asset) {
+    const o = asset && asset.options;
+    if (!o || !(o.flags & 1)) return { maker: 0, taker: 0 };
+    const maker = (o.market_fee_percent || 0) / 10000;
+    const taker = o.extensions && o.extensions.taker_fee_percent != null ? o.extensions.taker_fee_percent / 10000 : maker;
+    return { maker, taker };
+  }
+
+  // ── 3. Data Fetching & Calculations ─────────────────────────
+  async function loadAllData() {
+    $('refreshBtn').classList.add('spinning');
+    try {
+      // 1. Fetch reference pools 1.19.48 (BTS/USDT) and 1.19.58 (BTS/BTC)
+      const refPools = await getObjects(["1.19.48", "1.19.58"]);
+      const pUsdt = refPools["1.19.48"];
+      const pBtc = refPools["1.19.58"];
+
+      const usdtBal = pUsdt && await poolBalances(pUsdt);
+      if (usdtBal) {
+        const [balBts, balUsdt] = usdtBal;
+        usdRefs.usdPerBts = balBts > 0 ? balUsdt / balBts : 0;
+      }
+
+      const btcBal = pBtc && usdRefs.usdPerBts > 0 && await poolBalances(pBtc);
+      if (btcBal) {
+        const [balBts, balBtc] = btcBal;
+        const btcPerBts = balBts > 0 ? balBtc / balBts : 0;
+        usdRefs.usdPerBtc = btcPerBts > 0 ? usdRefs.usdPerBts / btcPerBts : 0;
+
+        // Headline sats price
+        headlinePriceSats = (btcPerBts * 100000000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        $('stat-headline-price').textContent = `${headlinePriceSats} sats`;
+      }
+
+      // 2. Fetch all monitored pools
+      const allIds = ALL_POOLS.map(p => p.id);
+      const poolsRaw = await getObjects(allIds);
+
+      // Collect all asset IDs
+      const assetIds = new Set();
+      const shareIds = new Set();
+      ALL_POOLS.forEach(cfg => {
+        const p = poolsRaw[cfg.id];
+        if (p) {
+          assetIds.add(p.asset_a);
+          assetIds.add(p.asset_b);
+          shareIds.add(p.share_asset);
+        }
+      });
+
+      const assetMap = await getObjects([...assetIds, ...shareIds]);
+
+      // Collect dynamic asset data IDs for shares
+      const dynIds = [];
+      shareIds.forEach(sid => {
+        const a = assetMap[sid];
+        if (a && a.dynamic_asset_data_id) dynIds.push(a.dynamic_asset_data_id);
+      });
+      const dynMap = await getObjects(dynIds);
+
+      // Calculate stats for each pool
+      poolStats = ALL_POOLS.map(cfg => {
+        const p = poolsRaw[cfg.id];
+        if (!p) return { ...cfg, error: true };
+
+        const assetA = assetMap[p.asset_a] || { symbol: '?', precision: 5 };
+        const assetB = assetMap[p.asset_b] || { symbol: '?', precision: 5 };
+        const shareAsset = assetMap[p.share_asset] || { symbol: '?', precision: 5 };
+
+        const balA = parseInt(p.balance_a, 10) / Math.pow(10, assetA.precision);
+        const balB = parseInt(p.balance_b, 10) / Math.pow(10, assetB.precision);
+
+        let shareSupply = 0;
+        if (shareAsset.dynamic_asset_data_id && dynMap[shareAsset.dynamic_asset_data_id]) {
+          shareSupply = parseInt(dynMap[shareAsset.dynamic_asset_data_id].current_supply, 10) / Math.pow(10, shareAsset.precision);
+        }
+
+        const price = balA > 0 ? balB / balA : 0;
+
+        // BTC Value Depth (balanceBTC * 2)
+        let btcDepthValue = -1;
+        if (BTC_ASSETS.includes(assetA.symbol)) btcDepthValue = balA * 2;
+        else if (BTC_ASSETS.includes(assetB.symbol)) btcDepthValue = balB * 2;
+
+        // Pool USD value and LP valuation via shared/pool-math.js
+        const { usdDepthValue, lpUsdValue } = PoolMath.valueLpShareUsd(p, assetA, assetB, shareSupply, usdRefs);
+
+        return {
+          id: p.id,
+          name: cfg.name,
+          priority: cfg.priority,
+          category: XBTSX_POOLS.some(x => x.id === p.id) ? 'btc' : 'other',
+          assetA: assetA.symbol,
+          assetB: assetB.symbol,
+          assetA_id: p.asset_a,
+          assetB_id: p.asset_b,
+          precisionA: assetA.precision,
+          precisionB: assetB.precision,
+          shareSymbol: shareAsset.symbol,
+          balanceA: balA,
+          balanceB: balB,
+          price,
+          shareSupply,
+          btcDepthValue,
+          usdDepthValue,
+          lpUsdValue,
+          takerFeeBps: Number(p.taker_fee_percent ?? 0),
+          assetA_obj: assetA,
+          assetB_obj: assetB,
+          marketFeeA: PoolMath.marketFee(assetA, 10000n, true),
+          marketFeeB: PoolMath.marketFee(assetB, 10000n, true)
+        };
+      });
+
+      renderTable();
+      if (!B95.embedded) setStatus('connected', 'Direct');
+    } catch (e) {
+      console.error(e);
+      loadedNodeUrl = null;
+      if (!B95.embedded) setStatus('error', 'Offline');
+      else setStatus('error', 'Error');
+      $('stat-last-time').textContent = `Load failed: ${e.message}`;
+    } finally {
+      $('refreshBtn').classList.remove('spinning');
+    }
+  }
+
+  // ── 4. Rendering & Sorting ──────────────────────────────────
+  function renderTable() {
+    const comparing = activeCategory === 'compare';
+    $('compare-view').style.display = comparing ? '' : 'none';
+    $('table-view').style.display = comparing ? 'none' : '';
+    $('search-input').style.display = comparing ? 'none' : '';
+    renderCompare();
+
+    let list = poolStats.filter(p => !p.error);
+
+    if (activeCategory === 'btc') list = list.filter(p => p.category === 'btc');
+    else if (activeCategory === 'other') list = list.filter(p => p.category === 'other');
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(p => p.name.toLowerCase().includes(q) || p.id.includes(q));
+    }
+
+    // Sort
+    list.sort((a, b) => {
+      let va = a[sortBy], vb = b[sortBy];
+      if (sortBy === 'name') {
+        return sortAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+      }
+      return sortAsc ? (va - vb) : (vb - va);
+    });
+
+    // Update Top Summary Stats
+    const totalBtc = poolStats
+      .filter(p => p.btcDepthValue > 0)
+      .reduce((sum, p) => sum + p.btcDepthValue, 0);
+
+    $('stat-total-btc').textContent = `${fmtNum(totalBtc, 8)} BTC`;
+    $('stat-pool-count').textContent = `${poolStats.length} Monitored Pools`;
+    $('stat-last-time').textContent = `Refreshed at ${new Date().toLocaleTimeString()}`;
+
+    // Table Body
+    const tbody = $('pool-table-body');
+    tbody.innerHTML = list.map(p => {
+      let depthClass = 'depth-mute';
+      let depthText = 'N/A';
+      if (p.btcDepthValue > 0.1) { depthClass = 'depth-green'; depthText = `${fmtNum(p.btcDepthValue, 8)} BTC`; }
+      else if (p.btcDepthValue > 0) { depthClass = 'depth-btc'; depthText = `${fmtNum(p.btcDepthValue, 8)} BTC`; }
+
+      return `
+        <tr>
+          <td>
+            <div class="pool-name-cell">
+              <span>${p.name}</span>
+              <span class="badge">${p.id}</span>
+            </div>
+          </td>
+          <td style="text-align:right;" class="${depthClass}">${depthText}</td>
+          <td style="text-align:right;">${fmtNum(p.balanceA, 4)} <span class="badge">${p.assetA}</span></td>
+          <td style="text-align:right;">${fmtNum(p.balanceB, 4)} <span class="badge">${p.assetB}</span></td>
+          <td style="text-align:right;" class="price-text">${fmtNum(p.price, 8)}</td>
+          <td style="text-align:right; color:${p.lpUsdValue > 0.01 ? 'var(--green)' : 'var(--text-mute)'};">
+            ${fmtUsd(p.lpUsdValue)}
+          </td>
+          <td style="text-align:center;">
+            <button class="btn-action" onclick="openTxModal('${p.id}')">Tx JSON ⚡</button>
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  // BTC Compare tab: each pool's BTS leg and BTC leg, as sats per BTS and BTS per BTC
+  function btcSides(p) {
+    const btsIsA = p.assetA === 'BTS';
+    const bts = btsIsA ? p.balanceA : p.balanceB;
+    const btc = btsIsA ? p.balanceB : p.balanceA;
+    return { bts, btc, btcAsset: btsIsA ? p.assetB : p.assetA, satsPerBts: bts > 0 ? (btc / bts) * 1e8 : 0, btsPerBtc: btc > 0 ? bts / btc : 0 };
+  }
+
+  function renderCompare() {
+    const pools = COMPARE_POOLS.map(cfg => {
+      const p = poolStats.find(x => x.id === cfg.id && !x.error);
+      return p && { ...cfg, p, s: btcSides(p) };
+    });
+    const live = pools.filter(c => c && c.s.bts > 0);
+
+    $('compare-cards').innerHTML = pools.map((c, i) => {
+      if (!c) return `<div class="pool-card"><div class="pool-title">Pool ${COMPARE_POOLS[i].id}</div><div class="pool-desc">Not loaded</div></div>`;
+      const { p, s } = c;
+      const row = (k, v, cls = '') => `<div class="metric-row"><span class="metric-k">${k}</span><span class="metric-v ${cls}">${v}</span></div>`;
+      return `
+        <div class="pool-card">
+          <div class="pool-card-header">
+            <div>
+              <div class="pool-title"><span>${p.name}</span><span class="tag ${c.tagClass}">${p.id}</span></div>
+              <div class="pool-desc">${c.desc}</div>
+            </div>
+            <span class="badge">${(p.takerFeeBps / 100).toFixed(2)}% Fee</span>
+          </div>
+          <div class="pool-metrics-list">
+            ${row('BTS Reserve', `${fmtNum(s.bts, 2)} BTS`)}
+            ${row(`${s.btcAsset} Reserve`, `${fmtNum(s.btc, 8)} ${s.btcAsset}`, 'highlight')}
+            ${row('Spot Rate (Sats/BTS)', `${s.satsPerBts.toFixed(2)} sats`, 'highlight')}
+            ${row('Inverse Rate (BTS/BTC)', `${fmtNum(s.btsPerBtc, 2)} BTS`)}
+            ${row('BTC Depth (2×BTC)', `${fmtNum(2 * s.btc, 6)} BTC (${fmtUsd(p.usdDepthValue)})`, 'green')}
+            ${row('LP Share Value (USD)', fmtUsd(p.lpUsdValue), 'green')}
+            ${row('LP Token / Supply', `<span style="font-size:11px;">${p.shareSymbol} (${fmtNum(p.shareSupply, 2)} shares)</span>`)}
+          </div>
+          <div class="card-actions">
+            <button class="card-btn swap" onclick="openTxModal('${p.id}', '63')">⚡ Swap (Op 63)</button>
+            <button class="card-btn deposit" onclick="openTxModal('${p.id}', '61')">💧 Deposit LP (Op 61)</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    // Capitalization-weighted BTS / BTC average. A pool's capitalization is twice
+    // its BTS reserve, so weighting each sats/BTS by it reduces to
+    // total BTC reserves / total BTS reserves.
+    const totalBts = live.reduce((t, c) => t + c.s.bts, 0);
+    if (totalBts > 0) {
+      const avgBtcPerBts = live.reduce((t, c) => t + c.s.btc, 0) / totalBts;
+      $('cmp-avg-price').textContent = `${(avgBtcPerBts * 1e8).toFixed(2)} sats`;
+      $('cmp-avg-sub').textContent = `1 BTC = ${fmtNum(avgBtcPerBts > 0 ? 1 / avgBtcPerBts : 0, 0)} BTS`;
+      $('cmp-avg-weights').textContent = live.map(c => `${c.id}: ${(c.s.bts / totalBts * 100).toFixed(1)}%`).join(' · ');
+    }
+
+    // Parity: BTS per BTWTY.BTC over BTS per XBTSX.BTC
+    const [x, w] = pools;
+    if (x && w && x.s.btsPerBtc > 0 && w.s.btsPerBtc > 0) {
+      const ratio = w.s.btsPerBtc / x.s.btsPerBtc;
+      const spreadPct = (ratio - 1) * 100;
+      const signed = `${spreadPct >= 0 ? '+' : ''}${spreadPct.toFixed(2)}%`;
+      $('cmp-parity-ratio').textContent = `${ratio.toFixed(4)}x`;
+      $('cmp-parity-sub').textContent = `${signed} vs ${x.id}`;
+      const badge = $('parity-badge');
+      const desc = $('parity-description');
+      if (Math.abs(spreadPct) < 0.25) {
+        badge.className = 'parity-badge neutral';
+        badge.textContent = `SPREAD: ${signed} (AT PARITY)`;
+        desc.innerHTML = `<strong>Balanced Parity</strong> — BTWTY.BTC and XBTSX.BTC prices are tightly aligned within 0.25%.`;
+      } else if (spreadPct > 0) {
+        badge.className = 'parity-badge premium';
+        badge.textContent = `BTWTY.BTC PREMIUM: ${signed}`;
+        desc.innerHTML = `<strong>1 BTWTY.BTC yields ${fmtNum(w.s.btsPerBtc - x.s.btsPerBtc, 0)} more BTS</strong> than 1 XBTSX.BTC. Holders of BTWTY.BTC get more BTS selling on ${w.id}; BTC bought with BTS is cheaper as XBTSX.BTC on ${x.id}.`;
+      } else {
+        badge.className = 'parity-badge discount';
+        badge.textContent = `BTWTY.BTC DISCOUNT: ${signed}`;
+        desc.innerHTML = `<strong>BTWTY.BTC is cheaper</strong> by ${Math.abs(spreadPct).toFixed(2)}% in BTS terms. BTC bought with BTS is cheaper as BTWTY.BTC on ${w.id}; holders of XBTSX.BTC get more BTS selling on ${x.id}.`;
+      }
+    }
+
+    $('cmp-total-btc').textContent = `${fmtNum(live.reduce((t, c) => t + 2 * c.s.btc, 0), 6)} BTC`;
+    $('cmp-total-usd').textContent = `${fmtUsd(live.reduce((t, c) => t + c.p.usdDepthValue, 0))} Total Staked`;
+  }
+
+  window.setCategory = function(cat) {
+    activeCategory = cat;
+    ['btc', 'other', 'all', 'compare'].forEach(c => {
+      $(`tab-${c}`).className = `tab-btn ${c === cat ? 'active' : ''}`;
+    });
+    renderTable();
+  };
+
+  window.setSort = function(key) {
+    if (sortBy === key) sortAsc = !sortAsc;
+    else { sortBy = key; sortAsc = false; }
+    renderTable();
+  };
+
+  // ── 5. Standard BitShares Tx Generator Modal ────────────────
+  window.openTxModal = function(poolId, opType) {
+    const p = poolStats.find(x => x.id === poolId);
+    if (!p) return;
+    activeModalPool = p;
+    if (opType) $('modal-op-type').value = opType;
+
+    $('modal-pool-title').textContent = `${p.name} (Pool ${p.id})`;
+
+    const dirSel = $('modal-direction');
+    dirSel.innerHTML = `
+      <option value="AtoB">Sell ${p.assetA} → Buy ${p.assetB}</option>
+      <option value="BtoA">Sell ${p.assetB} → Buy ${p.assetA}</option>
+    `;
+
+    if (!$('modal-account').value.trim()) {
+      const savedAcc = desktopAccount || savedAccount();
+      if (savedAcc) $('modal-account').value = savedAcc;
+    }
+
+    updateModalForm();
+    calculateModalTx();
+    $('tx-modal').style.display = 'flex';
+  };
+
+  window.closeModal = function() {
+    $('tx-modal').style.display = 'none';
+  };
+
+  window.updateModalForm = function() {
+    const op = $('modal-op-type').value;
+    const isSwap = op === "63";
+    $('group-direction').style.display = isSwap ? 'flex' : 'none';
+    $('group-slippage').style.display = isSwap ? 'flex' : 'none';
+    $('modal-amount-label').textContent = isSwap ? 'Amount to Sell' : `Amount of ${activeModalPool?.assetA || 'Asset A'}`;
+    calculateModalTx();
+  };
+
+  window.calculateModalTx = function() {
+    if (!activeModalPool) return;
+    const p = activeModalPool;
+    const opType = $('modal-op-type').value;
+    const accountInput = $('modal-account').value.trim();
+    if (accountInput) saveAccount(accountInput);
+
+    const amount = parseFloat($('modal-amount').value) || 0;
+    const slippagePct = parseFloat($('modal-slippage').value) || 0.5;
+
+    let txOp = null;
+    let summary = '';
+
+    if (opType === "63") {
+      // AMM Swap (Op 63)
+      const isAtoB = $('modal-direction').value === "AtoB";
+      const sellAsset = isAtoB ? p.assetA : p.assetB;
+      const buyAsset = isAtoB ? p.assetB : p.assetA;
+      const sellAssetId = isAtoB ? p.assetA_id : p.assetB_id;
+      const buyAssetId = isAtoB ? p.assetB_id : p.assetA_id;
+      const sellPrec = isAtoB ? p.precisionA : p.precisionB;
+      const buyPrec = isAtoB ? p.precisionB : p.precisionA;
+      const resIn = isAtoB ? p.balanceA : p.balanceB;
+      const resOut = isAtoB ? p.balanceB : p.balanceA;
+
+      const sellRawBig = PoolMath.big(Math.round(amount * Math.pow(10, sellPrec)));
+      const poolObj = {
+        asset_a: p.assetA_id,
+        asset_b: p.assetB_id,
+        balance_a: String(Math.round(p.balanceA * Math.pow(10, p.precisionA))),
+        balance_b: String(Math.round(p.balanceB * Math.pow(10, p.precisionB))),
+        taker_fee_percent: p.takerFeeBps
+      };
+      const assetMap = {
+        [p.assetA_id]: p.assetA_obj,
+        [p.assetB_id]: p.assetB_obj
+      };
+      const swapRes = PoolMath.calculatePoolSwap(
+        poolObj,
+        sellRawBig,
+        sellAssetId,
+        Math.round(slippagePct * 10),
+        assetMap
+      );
+
+      const sellRaw = String(sellRawBig);
+      const minRaw = String(swapRes.minReceive);
+      const dy = Number(swapRes.expectedOut) / Math.pow(10, buyPrec);
+      const minRecv = Number(swapRes.minReceive) / Math.pow(10, buyPrec);
+
+      summary = `Expected Output: ~${fmtNum(dy, 4)} ${buyAsset} (Min: ${fmtNum(minRecv, 4)} ${buyAsset})`;
+
+      txOp = [
+        63,
+        {
+          fee: { amount: "0", asset_id: "1.3.0" },
+          account: null,
+          pool: p.id,
+          amount_to_sell: { amount: sellRaw, asset_id: sellAssetId },
+          min_to_receive: { amount: minRaw, asset_id: buyAssetId },
+          extensions: []
+        }
+      ];
+    } else {
+      // LP Deposit (Op 61)
+      const poolObj = {
+        asset_a: p.assetA_id,
+        asset_b: p.assetB_id,
+        balance_a: String(Math.round(p.balanceA * Math.pow(10, p.precisionA))),
+        balance_b: String(Math.round(p.balanceB * Math.pow(10, p.precisionB)))
+      };
+      const depA = amount;
+      const rawA = String(Math.round(depA * Math.pow(10, p.precisionA)));
+      const rawB = String(PoolMath.pairedAmount(poolObj, rawA, p.assetA_id));
+      const depB = Number(rawB) / Math.pow(10, p.precisionB);
+
+      summary = `Pairing Deposit: ${fmtNum(depA, 4)} ${p.assetA} + ${fmtNum(depB, 4)} ${p.assetB}`;
+
+      txOp = [
+        61,
+        {
+          fee: { amount: "0", asset_id: "1.3.0" },
+          account: null,
+          pool: p.id,
+          amount_a: { amount: rawA, asset_id: p.assetA_id },
+          amount_b: { amount: rawB, asset_id: p.assetB_id },
+          extensions: []
+        }
+      ];
+    }
+
+    $('modal-summary-text').textContent = summary;
+    const amounts = opType === "63"
+      ? [txOp[1].amount_to_sell.amount, txOp[1].min_to_receive.amount]
+      : [txOp[1].amount_a.amount, txOp[1].amount_b.amount];
+    if (amounts.some(a => !(Number(a) > 0))) {
+      clearTimeout(buildTimer);
+      buildSeq++;
+      showRequest(null, 'Amount too small: both legs must be at least one unit of their asset.');
+      return;
+    }
+    buildRequestSoon(accountInput, txOp);
+  };
+
+  // The preview is the BeetVault request Copy and Download hand over: the account
+  // resolved to its 1.2.x id and the expiration taken from chain time
+  let modalRequest = null;
+  let buildTimer = null;
+  let buildSeq = 0;
+
+  function showRequest(request, message) {
+    modalRequest = request;
+    $('modal-tx-preview').textContent = request ? BeetVault.requestJson(request) : message;
+    $('btn-deeplink-modal').disabled = !request;
+    $('btn-copy-modal-json').disabled = !request;
+    $('btn-download-modal-json').disabled = !request;
+  }
+
+  function buildRequestSoon(accountInput, txOp) {
+    clearTimeout(buildTimer);
+    const seq = ++buildSeq;
+    showRequest(null, accountInput ? 'Building BeetVault request…' : 'Enter the account that will sign this transaction.');
+    if (!accountInput) return;
+    buildTimer = setTimeout(async () => {
+      try {
+        const [account, dgp] = await Promise.all([
+          B95.resolveAccount(accountInput),
+          callRPC('database', 'get_dynamic_global_properties', [])
+        ]);
+        if (seq !== buildSeq) return;
+        const op = [txOp[0], { ...txOp[1], account: account.id }];
+        showRequest(BeetVault.buildRequest([op], {
+          appName: 'Pool Stats Lite',
+          expiration: BeetVault.expirationFrom(dgp.time)
+        }));
+      } catch (e) {
+        if (seq === buildSeq) showRequest(null, `Could not build the request: ${e.message}`);
+      }
+    }, 400);
+  }
+
+  // ── 6. Event Listeners & Export ─────────────────────────────
+  $('search-input').addEventListener('input', e => {
+    searchQuery = e.target.value.trim();
+    renderTable();
+  });
+
+  $('refreshBtn').addEventListener('click', () => {
+    cache.clear();
+    loadAllData();
+  });
+
+  // Auto-refresh every minute while the page is visible, the node is up and no load is running
+  setInterval(() => {
+    const btn = $('refreshBtn');
+    if (!B95.visible() || btn.disabled || btn.classList.contains('spinning') || poolStats.length === 0) return;
+    cache.clear();
+    loadAllData();
+  }, 60000);
+
+  $('btn-export-json').addEventListener('click', () => {
+    const data = JSON.stringify(poolStats, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `bitshares-pools-stats-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  $('btn-copy-modal-json').addEventListener('click', async () => {
+    if (!modalRequest) return;
+    const text = BeetVault.requestJson(modalRequest);
+    try {
+      await navigator.clipboard.writeText(text);
+      const btn = $('btn-copy-modal-json');
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+    } catch {}
+  });
+
+  $('btn-deeplink-modal').addEventListener('click', () => {
+    if (!modalRequest) return;
+    const acct = $('modal-account').value.trim();
+    if (!BeetVault.launchDeeplink(modalRequest)) return;
+    if (window.B95) B95.notify('Beet Deeplink', `Opened pool transaction in Beet wallet for ${acct}.`);
+  });
+
+  $('btn-download-modal-json').addEventListener('click', () => {
+    if (!modalRequest) return;
+    const filename = `bts-pool-tx-${activeModalPool?.id || 'op'}-${Date.now()}.json`;
+    BeetVault.downloadRequest(modalRequest, filename, { signer: $('modal-account').value.trim() });
+  });
+
+  setInterval(() => { $('footer-time').textContent = new Date().toUTCString(); }, 1000);
+
+  // ── 7. Desktop node & account ───────────────────────────────
+  let desktopAccount = null;
+  let loadedNodeUrl = null;
+
+  B95.onContext(({ account, node }) => {
+    // Desktop login fills the account field (typing another account still works)
+    if (account && account.name !== desktopAccount) {
+      desktopAccount = account.name;
+      $('modal-account').value = account.name;
+      if ($('tx-modal').style.display === 'flex') calculateModalTx();
+    }
+    if (!B95.embedded) return;
+    $('nodeLabel').textContent = node.url ? node.url.replace('wss://', '').replace(/\/ws$/, '') : 'desktop';
+    if (node.status === 'online') {
+      setStatus('connected', 'Live');
+      $('refreshBtn').disabled = false;
+      // First connection, desktop switched nodes, or retry after failed initial load
+      if (node.url !== loadedNodeUrl || poolStats.length === 0) {
+        loadedNodeUrl = node.url;
+        cache.clear();
+        loadAllData();
+      }
+    } else {
+      setStatus(node.status === 'offline' ? 'error' : 'connecting', node.status === 'offline' ? 'Offline' : 'Connecting…');
+      $('refreshBtn').disabled = true;
+    }
+  });
+
+  // Popped out: the bridge picks a node itself
+  if (!B95.embedded) {
+    $('nodeLabel').textContent = 'direct';
+    loadAllData();
+  }
+})();
+</script>
+</body>
+</html>

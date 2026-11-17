@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-10-24T11:36:56Z",
+  "reference_pool": "1.19.48",
+  "pools": {
+    "1.19.133": {
+      "pool_id": "1.19.133",
+      "name": "BTS / IOB.XRP",
+      "share_asset_id": "1.3.6032",
+      "share_symbol": "IOB.BTSXRP",
+      "share_precision": 5,
+      "dyn_id": "2.3.6032",
+      "asset_a": {
+        "id": "1.3.0",
+        "symbol": "BTS",
+        "precision": 5
+      },
+      "asset_b": {
+        "id": "1.3.5537",
+        "symbol": "IOB.XRP",
+        "precision": 4
+      },
+      "taker_fee_bps": 50,
+      "snapshots": [
+        {
+          "id": "2026-10-01",
+          "label": "Oct 01 Benchmark",
+          "timestamp": "2026-10-01T00:00:00Z",
+          "block_num": 113500000,
+          "bal_a": 3288920.15,
+          "bal_b": 2824.12,
+          "share_supply": 518309.51151,
+          "pps_k": 0.185842,
+          "pps_bts": 12.6905,
+          "pps_iob": 0.010897,
+          "a_per_share": 6.34525,
+          "b_per_share": 0.005448,
+          "spot_price_iob_in_bts": 1164.58,
+          "lp_usd": 0.01768
+        },
+        {
+          "id": "2026-10-17",
+          "label": "7 Days Ago",
+          "timestamp": "2026-10-17T00:00:00Z",
+          "block_num": 114940000,
+          "bal_a": 3345210.88,
+          "bal_b": 2872.45,
+          "share_supply": 518309.51151,
+          "pps_k": 0.189088,
+          "pps_bts": 12.9081,
+          "pps_iob": 0.011084,
+          "a_per_share": 6.45405,
+          "b_per_share": 0.005542,
+          "spot_price_iob_in_bts": 1164.58,
+          "lp_usd": 0.01802
+        },
+        {
+          "id": "2026-10-24",
+          "label": "Snapshot 2026-10-24",
+          "timestamp": "2026-10-24T11:36:56Z",
+          "block_num": 115503250,
+          "bal_a": 3387490.23954,
+          "bal_b": 2905.5631,
+          "share_supply": 518309.51151,
+          "pps_k": 0.1914102,
+          "pps_bts": 13.0713,
+          "pps_iob": 0.0112117,
+          "a_per_share": 6.53565,
+          "b_per_share": 0.00561,
+          "spot_price_iob_in_bts": 1165.8636,
+          "lp_usd": 0.014821
+        }
+      ]
+    },
+    "1.19.399": {
+      "pool_id": "1.19.399",
+      "name": "BTS / IOB.XLM",
+      "share_asset_id": "1.3.6445",
+      "share_symbol": "IOB.BTSXLM",
+      "share_precision": 5,
+      "dyn_id": "2.3.6445",
+      "asset_a": {
+        "id": "1.3.0",
+        "symbol": "BTS",
+        "precision": 5
+      },
+      "asset_b": {
+        "id": "1.3.6444",
+        "symbol": "IOB.XLM",
+        "precision": 4
+      },
+      "taker_fee_bps": 50,
+      "snapshots": [
+        {
+          "id": "2026-10-01",
+          "label": "Oct 01 Benchmark",
+          "timestamp": "2026-10-01T00:00:00Z",
+          "block_num": 113500000,
+          "bal_a": 1149185.22,
+          "bal_b": 7374.55,
+          "share_supply": 240604.70897,
+          "pps_k": 0.38268,
+          "pps_bts": 9.5525,
+          "pps_iob": 0.061299,
+          "a_per_share": 4.77625,
+          "b_per_share": 0.03065,
+          "spot_price_iob_in_bts": 155.83,
+          "lp_usd": 0.01331
+        },
+        {
+          "id": "2026-10-17",
+          "label": "7 Days Ago",
+          "timestamp": "2026-10-17T00:00:00Z",
+          "block_num": 114940000,
+          "bal_a": 1138400.1,
+          "bal_b": 7305.2,
+          "share_supply": 240604.70897,
+          "pps_k": 0.379294,
+          "pps_bts": 9.4628,
+          "pps_iob": 0.060724,
+          "a_per_share": 4.7314,
+          "b_per_share": 0.030362,
+          "spot_price_iob_in_bts": 155.83,
+          "lp_usd": 0.01319
+        },
+        {
+          "id": "2026-10-24",
+          "label": "Snapshot 2026-10-24",
+          "timestamp": "2026-10-24T11:36:56Z",
+          "block_num": 115503250,
+          "bal_a": 1132299.03566,
+          "bal_b": 7266.1144,
+          "share_supply": 240604.70897,
+          "pps_k": 0.376988,
+          "pps_bts": 9.41211,
+          "pps_iob": 0.0603988,
+          "a_per_share": 4.70606,
+          "b_per_share": 0.0302,
+          "spot_price_iob_in_bts": 155.8328,
+          "lp_usd": 0.010672
+        }
+      ]
+    }
+  },
+  "head_block": 115503250,
+  "reference_bts_usd": 0.001134
+}

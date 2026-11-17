@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../shared/fonts.css">
+  <title>ioBanker Gateway - XRP &amp; XLM Deposit Bridge</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b0f1a;
+      --surface: #111827;
+      --surface2: #1a2235;
+      --surface3: #212c45;
+      --border: #1e2d45;
+      --border2: #2d3f60;
+      --accent: #88c0d0;
+      --accent-glow: rgba(136, 192, 208, 0.18);
+      --xrp: #346aa9;
+      --xrp-light: #60a5fa;
+      --xrp-glow: rgba(52, 106, 169, 0.2);
+      --xlm: #2d6e5e;
+      --xlm-light: #34d399;
+      --xlm-glow: rgba(45, 110, 94, 0.2);
+      --green: #34d399;
+      --red: #f87171;
+      --yellow: #fbbf24;
+      --text: #eceff4;
+      --text-dim: #d8dee9;
+      --text-mute: #9aa3b5;
+      --mono: var(--font-mono);
+      --radius: 10px;
+      --radius-sm: 6px;
+      --tr: 180ms ease;
+    }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .wrap { max-width: 900px; margin: 0 auto; padding: 18px 20px; }
+
+    /* Header */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 12px 0;
+      background: rgba(11, 15, 26, 0.94);
+      position: sticky; top: 0; z-index: 50;
+      backdrop-filter: blur(10px);
+    }
+    .header-inner {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, #1d4ed8 0%, #0d9488 100%);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; color: #fff; flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .brand-name { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
+    .brand-sub { font-size: 11px; color: var(--text-mute); }
+
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .status-pill {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 600; color: var(--text-dim);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 3px 10px;
+    }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-mute); }
+    .status-pill.connected .status-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-pill.connecting .status-dot { background: var(--yellow); }
+    .status-pill.offline .status-dot { background: var(--red); }
+
+    /* Account Section */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      position: relative;
+    }
+    .account-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .account-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .account-avatar {
+      width: 40px; height: 40px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .account-meta-name {
+      font-size: 15px; font-weight: 700; color: var(--text);
+    }
+    .account-meta-id {
+      font-size: 12px; color: var(--text-mute); font-family: var(--mono);
+    }
+    .tag-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      padding: 4px 10px;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+    .tag-badge strong {
+      color: var(--accent);
+      font-size: 13px;
+    }
+
+    /* Account lookup form */
+    .account-lookup-form {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .input-account {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 6px 10px;
+      width: 170px;
+      outline: none;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+    .input-account:focus { border-color: var(--accent); }
+
+    /* Buttons */
+    .btn {
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border2);
+      background: var(--surface2);
+      color: var(--text);
+      cursor: pointer;
+      transition: var(--tr);
+      text-decoration: none;
+    }
+    .btn:hover:not(:disabled) {
+      background: var(--surface3);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .btn:active:not(:disabled) { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary {
+      background: #2b4c7e;
+      border-color: #3b82f6;
+      color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) { background: #3b82f6; }
+    .btn-copy {
+      padding: 6px 10px;
+      font-size: 11px;
+      background: var(--surface3);
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .btn-copy.copied {
+      background: #065f46;
+      border-color: #10b981;
+      color: #a7f3d0;
+    }
+
+    /* Warning banner */
+    .warning-banner {
+      background: rgba(235, 203, 139, 0.08);
+      border: 1px solid rgba(235, 203, 139, 0.3);
+      border-left: 4px solid var(--yellow);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #fce7b2;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .warning-icon { font-size: 16px; flex-shrink: 0; line-height: 1.2; }
+
+    /* Gateways Grid */
+    .gateway-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .gateway-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .gateway-card.xrp {
+      border-top: 3px solid var(--xrp-light);
+    }
+    .gateway-card.xlm {
+      border-top: 3px solid var(--xlm-light);
+    }
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .asset-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .coin-symbol {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 800; color: #fff;
+    }
+    .coin-symbol.xrp { background: #1d4ed8; }
+    .coin-symbol.xlm { background: #0d9488; }
+    .asset-name { font-size: 15px; font-weight: 700; }
+    .asset-network { font-size: 11px; color: var(--text-mute); }
+    .asset-bal {
+      font-size: 12px;
+      font-family: var(--mono);
+      color: var(--text-dim);
+      background: var(--surface2);
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    .asset-bal strong { color: var(--accent); }
+
+    /* Copy box */
+    .copy-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .copy-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-mute);
+      display: flex;
+      justify-content: space-between;
+    }
+    .copy-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text);
+    }
+    .copy-val {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      user-select: all;
+      -webkit-user-select: all;
+      min-width: 0;
+    }
+    .tag-highlight {
+      background: rgba(136, 192, 208, 0.08);
+      border-color: rgba(136, 192, 208, 0.4);
+    }
+    .tag-val {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: 1px;
+    }
+    .tag-val.disabled {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-mute);
+      letter-spacing: normal;
+    }
+
+    .card-footer-notes {
+      font-size: 11px;
+      color: var(--text-mute);
+      line-height: 1.4;
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    /* Actions bar */
+    .actions-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 18px;
+    }
+    .actions-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text-mute);
+    }
+    .actions-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .view-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .view-tab {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-mute);
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: var(--tr);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .view-tab:hover {
+      color: var(--text);
+      background: var(--surface2);
+    }
+    .view-tab.active {
+      color: #fff;
+      background: var(--surface2);
+      border-color: var(--accent);
+      box-shadow: 0 0 8px var(--accent-glow);
+    }
+    .pool-pps-strip {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 11px;
+      font-family: var(--mono);
+    }
+    .pps-strip-col {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .pps-strip-label {
+      color: var(--text-mute);
+    }
+    .pps-strip-val {
+      color: var(--accent);
+    }
+    .pps-strip-apy {
+      color: var(--green);
+    }
+    .btn-pps-link {
+      padding: 3px 8px;
+      font-size: 10px;
+    }
+
+    @media (max-width: 700px) {
+      .gateway-grid { grid-template-columns: 1fr; }
+      .account-bar { flex-direction: column; align-items: stretch; }
+      .actions-bar { flex-direction: column; align-items: stretch; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="wrap header-inner">
+      <div class="brand">
+        <div class="brand-icon">🌉</div>
+        <div>
+          <div class="brand-name">ioBanker Gateway</div>
+          <div class="brand-sub">BitShares XRP &amp; XLM Deposit Bridge</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="status-pill connected" id="node-pill">
+          <div class="status-dot"></div>
+          <span id="node-text">Connecting...</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <!-- View Switcher -->
+    <div class="view-tabs">
+      <button class="view-tab active" id="tab-bridge">🌉 Deposit Bridge</button>
+      <button class="view-tab" id="tab-pps">📈 LP PPS &amp; Annualized Yield ↗</button>
+    </div>
+
+    <!-- Account & Tag Identity Card -->
+    <div class="card">
+      <div class="account-bar">
+        <div class="account-info">
+          <div class="account-avatar">👤</div>
+          <div>
+            <div class="account-meta-name" id="view-account-name">Not logged in</div>
+            <div class="account-meta-id" id="view-account-id">Log in on the desktop or enter an account below</div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <div class="tag-badge" id="tag-badge-container">
+            <span>Gateway Tag:</span>
+            <strong id="view-tag-display">—</strong>
+          </div>
+          <button class="btn btn-primary" id="btn-desktop-login">🔑 Login</button>
+        </div>
+      </div>
+
+      <!-- Manual account lookup for standalone / switch account -->
+      <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+        <span style="font-size: 11px; color: var(--text-mute);">Look up another BitShares account:</span>
+        <div class="account-lookup-form">
+          <input type="text" class="input-account" id="input-account-name" placeholder="account or 1.2.x" autocomplete="off" spellcheck="false" />
+          <button class="btn" id="btn-resolve-account">Lookup</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mandatory Warning Banner -->
+    <div class="warning-banner">
+      <div class="warning-icon">⚠️</div>
+      <div>
+        <strong>Mandatory Destination Tag / Memo:</strong>
+        ioBanker deposits share static gateway addresses. You <strong>MUST</strong> provide your numeric BitShares account ID (your account ID without <code>1.2.</code>) as the <strong>Destination Tag</strong> for XRP or <strong>Memo</strong> for XLM. Deposits sent without the tag or with an incorrect tag cannot be automatically credited.
+      </div>
+    </div>
+
+    <!-- Gateway Cards Grid -->
+    <div class="gateway-grid">
+
+      <!-- XRP Card -->
+      <div class="gateway-card xrp">
+        <div class="card-head">
+          <div class="asset-title">
+            <div class="coin-symbol xrp">XRP</div>
+            <div>
+              <div class="asset-name">Ripple (XRP)</div>
+              <div class="asset-network">Receives: <strong>IOB.XRP</strong> (1.3.5537)</div>
+            </div>
+          </div>
+          <div class="asset-bal" id="bal-xrp">Balance: <strong>—</strong></div>
+        </div>
+
+        <!-- Address -->
+        <div class="copy-group">
+          <div class="copy-label">
+            <span>Static XRP Deposit Address</span>
+            <span style="color:var(--text-mute)">XRPL Mainnet</span>
+          </div>
+          <div class="copy-box">
+            <span class="copy-val" id="val-xrp-addr">rDce39TBzszQJx2sshLy5jPXV3F9nEaQ9Y</span>
+            <button class="btn btn-copy" data-target="val-xrp-addr" data-label="XRP Address">Copy Address</button>
+          </div>
+        </div>
+
+        <!-- Tag -->
+        <div class="copy-group">
+          <div class="copy-label">
+            <span>Destination Tag (Required)</span>
+            <span style="color:var(--accent)">1.2. dropped</span>
+          </div>
+          <div class="copy-box tag-highlight">
+            <span class="copy-val tag-val" id="val-xrp-tag">—</span>
+            <button class="btn btn-copy" id="btn-copy-xrp-tag" data-target="val-xrp-tag" data-label="XRP Tag" disabled>Copy Tag</button>
+          </div>
+        </div>
+
+        <!-- Pool PPS Mini Badge -->
+        <div class="pool-pps-strip" id="strip-xrp-pps" title="Click to view full BTS/IOB.XRP PPS & Yield">
+          <div class="pps-strip-col">
+            <span class="pps-strip-label">Pool 1.19.133 PPS<sub>k</sub>:</span>
+            <strong class="pps-strip-val" id="card-xrp-ppsk">loading...</strong>
+          </div>
+          <div class="pps-strip-col">
+            <span class="pps-strip-label">Fee APY:</span>
+            <strong class="pps-strip-apy" id="card-xrp-apy">—</strong>
+          </div>
+          <button class="btn btn-sm btn-pps-link" id="btn-view-xrp-pps">📈 View PPS ↗</button>
+        </div>
+
+        <div class="card-footer-notes">
+          <div>• Network: <strong>XRP Ledger</strong> native transfer.</div>
+          <div>• Minted 1:1 as <strong>IOB.XRP</strong> on BitShares.</div>
+          <div>• Minimum deposit: typically 10 XRP.</div>
+        </div>
+      </div>
+
+      <!-- XLM Card -->
+      <div class="gateway-card xlm">
+        <div class="card-head">
+          <div class="asset-title">
+            <div class="coin-symbol xlm">XLM</div>
+            <div>
+              <div class="asset-name">Stellar Lumens (XLM)</div>
+              <div class="asset-network">Receives: <strong>IOB.XLM</strong> (1.3.6444)</div>
+            </div>
+          </div>
+          <div class="asset-bal" id="bal-xlm">Balance: <strong>—</strong></div>
+        </div>
+
+        <!-- Address -->
+        <div class="copy-group">
+          <div class="copy-label">
+            <span>Static XLM Deposit Address</span>
+            <span style="color:var(--text-mute)">Stellar Public Net</span>
+          </div>
+          <div class="copy-box">
+            <span class="copy-val" id="val-xlm-addr">GCYDZS45X25IKBOOV7PJNYKH5RNGVGSDUH4TTYGXHFBBQMVHG7GVUHMH</span>
+            <button class="btn btn-copy" data-target="val-xlm-addr" data-label="XLM Address">Copy Address</button>
+          </div>
+        </div>
+
+        <!-- Memo -->
+        <div class="copy-group">
+          <div class="copy-label">
+            <span>Memo / Memo ID (Required)</span>
+            <span style="color:var(--accent)">1.2. dropped</span>
+          </div>
+          <div class="copy-box tag-highlight">
+            <span class="copy-val tag-val" id="val-xlm-memo">—</span>
+            <button class="btn btn-copy" id="btn-copy-xlm-memo" data-target="val-xlm-memo" data-label="XLM Memo" disabled>Copy Memo</button>
+          </div>
+        </div>
+
+        <!-- Pool PPS Mini Badge -->
+        <div class="pool-pps-strip" id="strip-xlm-pps" title="Click to view full BTS/IOB.XLM PPS & Yield">
+          <div class="pps-strip-col">
+            <span class="pps-strip-label">Pool 1.19.399 PPS<sub>k</sub>:</span>
+            <strong class="pps-strip-val" id="card-xlm-ppsk">loading...</strong>
+          </div>
+          <div class="pps-strip-col">
+            <span class="pps-strip-label">Fee APY:</span>
+            <strong class="pps-strip-apy" id="card-xlm-apy">—</strong>
+          </div>
+          <button class="btn btn-sm btn-pps-link" id="btn-view-xlm-pps">📈 View PPS ↗</button>
+        </div>
+
+        <div class="card-footer-notes">
+          <div>• Network: <strong>Stellar Network</strong> native transfer.</div>
+          <div>• Minted 1:1 as <strong>IOB.XLM</strong> on BitShares.</div>
+          <div>• Minimum deposit: typically 50 XLM.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Actions Bar -->
+    <div class="actions-bar">
+      <div class="actions-left">
+        <span>After your deposit arrives on BitShares:</span>
+      </div>
+      <div class="actions-right">
+        <button class="btn" id="btn-refresh-balances">🔄 Refresh Balances</button>
+        <button class="btn" id="btn-open-pps">📈 ioBanker LP PPS</button>
+        <button class="btn btn-primary" id="btn-open-pools">🔀 Open LP Router</button>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="../shared/b95-bridge.js"></script>
+  <script src="../shared/pool-math.js"></script>
+  <script src="pps-snapshots.js"></script>
+  <script>
+    (() => {
+      'use strict';
+
+      const STATIC_CONFIG = {
+        xrp: {
+          address: 'rDce39TBzszQJx2sshLy5jPXV3F9nEaQ9Y',
+          assetId: '1.3.5537',
+          symbol: 'IOB.XRP',
+          precision: 4
+        },
+        xlm: {
+          address: 'GCYDZS45X25IKBOOV7PJNYKH5RNGVGSDUH4TTYGXHFBBQMVHG7GVUHMH',
+          assetId: '1.3.6444',
+          symbol: 'IOB.XLM',
+          precision: 4
+        }
+      };
+
+      const POOL_CONFIG = {
+        xrp: {
+          id: '1.19.133',
+          dynId: '2.3.6032',
+          assetA: { id: '1.3.0', symbol: 'BTS', precision: 5 },
+          assetB: { id: '1.3.5537', symbol: 'IOB.XRP', precision: 4 },
+          cardPpskId: 'card-xrp-ppsk',
+          cardApyId: 'card-xrp-apy'
+        },
+        xlm: {
+          id: '1.19.399',
+          dynId: '2.3.6445',
+          assetA: { id: '1.3.0', symbol: 'BTS', precision: 5 },
+          assetB: { id: '1.3.6444', symbol: 'IOB.XLM', precision: 4 },
+          cardPpskId: 'card-xlm-ppsk',
+          cardApyId: 'card-xlm-apy'
+        }
+      };
+
+      let currentAccount = null; // { name, id }
+      let activeNumericTag = null; // string without "1.2."
+
+      // DOM Elements
+      const nodePill = document.getElementById('node-pill');
+      const nodeText = document.getElementById('node-text');
+      const viewAccName = document.getElementById('view-account-name');
+      const viewAccId = document.getElementById('view-account-id');
+      const viewTagDisplay = document.getElementById('view-tag-display');
+      const valXrpTag = document.getElementById('val-xrp-tag');
+      const valXlmMemo = document.getElementById('val-xlm-memo');
+      const btnCopyXrpTag = document.getElementById('btn-copy-xrp-tag');
+      const btnCopyXlmMemo = document.getElementById('btn-copy-xlm-memo');
+      const balXrp = document.getElementById('bal-xrp');
+      const balXlm = document.getElementById('bal-xlm');
+      const btnDesktopLogin = document.getElementById('btn-desktop-login');
+      const inputAccName = document.getElementById('input-account-name');
+      const btnResolveAcc = document.getElementById('btn-resolve-account');
+      const btnRefreshBal = document.getElementById('btn-refresh-balances');
+      const btnOpenPools = document.getElementById('btn-open-pools');
+      const btnOpenPps = document.getElementById('btn-open-pps');
+      const tabPps = document.getElementById('tab-pps');
+      const btnViewXrpPps = document.getElementById('btn-view-xrp-pps');
+      const btnViewXlmPps = document.getElementById('btn-view-xlm-pps');
+
+      // Helper to extract tag
+      function extractTag(accountId) {
+        if (!accountId || typeof accountId !== 'string') return null;
+        const match = accountId.match(/^1\.2\.(\d+)$/);
+        return match ? match[1] : null;
+      }
+
+      // Copy to clipboard helper
+      async function copyText(text, label, btn) {
+        if (!text || text === '—') return;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+          }
+
+          if (btn) {
+            const orig = btn.textContent;
+            btn.textContent = '✓ Copied!';
+            btn.classList.add('copied');
+            setTimeout(() => {
+              btn.textContent = orig;
+              btn.classList.remove('copied');
+            }, 1800);
+          }
+
+          B95.notify('Copied to Clipboard', `${label || 'Value'}: ${text}`);
+        } catch (err) {
+          console.error('Copy failed:', err);
+        }
+      }
+
+      // Attach copy listeners
+      document.querySelectorAll('.btn-copy').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetId = btn.dataset.target;
+          const label = btn.dataset.label;
+          const el = document.getElementById(targetId);
+          if (el) copyText(el.textContent.trim(), label, btn);
+        });
+      });
+
+      // Update UI with account info
+      function setAccount(account) {
+        currentAccount = account;
+        if (account && account.id) {
+          activeNumericTag = extractTag(account.id);
+          viewAccName.textContent = account.name || account.id;
+          viewAccId.textContent = account.id;
+          btnDesktopLogin.textContent = 'Change Account';
+
+          if (activeNumericTag) {
+            viewTagDisplay.textContent = activeNumericTag;
+            valXrpTag.textContent = activeNumericTag;
+            valXlmMemo.textContent = activeNumericTag;
+            valXrpTag.classList.remove('disabled');
+            valXlmMemo.classList.remove('disabled');
+            btnCopyXrpTag.disabled = false;
+            btnCopyXlmMemo.disabled = false;
+          } else {
+            renderNoTag('Invalid Account ID');
+          }
+
+          fetchBalances(account.id);
+        } else {
+          activeNumericTag = null;
+          viewAccName.textContent = 'Not logged in';
+          viewAccId.textContent = 'Log in on the desktop or enter an account below';
+          btnDesktopLogin.textContent = '🔑 Login';
+          renderNoTag('Login or enter account to view tag');
+          balXrp.innerHTML = 'Balance: <strong>—</strong>';
+          balXlm.innerHTML = 'Balance: <strong>—</strong>';
+        }
+        fetchPoolPps();
+      }
+
+      function renderNoTag(message) {
+        viewTagDisplay.textContent = '—';
+        valXrpTag.textContent = message;
+        valXlmMemo.textContent = message;
+        valXrpTag.classList.add('disabled');
+        valXlmMemo.classList.add('disabled');
+        btnCopyXrpTag.disabled = true;
+        btnCopyXlmMemo.disabled = true;
+      }
+
+      // Query balances
+      async function fetchBalances(accountId) {
+        if (!accountId) return;
+        balXrp.innerHTML = 'Balance: <strong>loading...</strong>';
+        balXlm.innerHTML = 'Balance: <strong>loading...</strong>';
+
+        try {
+          const balances = await B95.rpc('get_account_balances', [
+            accountId,
+            [STATIC_CONFIG.xrp.assetId, STATIC_CONFIG.xlm.assetId]
+          ]);
+
+          let xrpAmount = 0;
+          let xlmAmount = 0;
+
+          if (Array.isArray(balances)) {
+            balances.forEach(b => {
+              if (b.asset_id === STATIC_CONFIG.xrp.assetId) {
+                xrpAmount = Number(b.amount) / Math.pow(10, STATIC_CONFIG.xrp.precision);
+              } else if (b.asset_id === STATIC_CONFIG.xlm.assetId) {
+                xlmAmount = Number(b.amount) / Math.pow(10, STATIC_CONFIG.xlm.precision);
+              }
+            });
+          }
+
+          balXrp.innerHTML = `Balance: <strong>${xrpAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</strong> ${STATIC_CONFIG.xrp.symbol}`;
+          balXlm.innerHTML = `Balance: <strong>${xlmAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</strong> ${STATIC_CONFIG.xlm.symbol}`;
+        } catch (err) {
+          console.warn('Balance lookup failed:', err);
+          balXrp.innerHTML = 'Balance: <strong>—</strong>';
+          balXlm.innerHTML = 'Balance: <strong>—</strong>';
+        }
+      }
+
+      // Query live pool PPS for mini badges
+      async function fetchPoolPps() {
+        try {
+          const reqIds = ['1.19.133', '1.19.399', '2.3.6032', '2.3.6445'];
+          const objects = await B95.rpc('get_objects', [reqIds]);
+          const objMap = {};
+          if (Array.isArray(objects)) {
+            objects.forEach(o => { if (o) objMap[o.id] = o; });
+          }
+
+          const snapshots = (window.IOB_PPS_SNAPSHOTS && window.IOB_PPS_SNAPSHOTS.pools) || {};
+
+          ['xrp', 'xlm'].forEach(key => {
+            const cfg = POOL_CONFIG[key];
+            const pool = objMap[cfg.id];
+            const dyn = objMap[cfg.dynId];
+            const ppskEl = document.getElementById(cfg.cardPpskId);
+            const apyEl = document.getElementById(cfg.cardApyId);
+
+            if (pool && dyn && window.PoolMath) {
+              const pps = PoolMath.calculatePoolPps(pool, cfg.assetA, cfg.assetB, dyn.current_supply, {
+                sharePrecision: 5
+              });
+              if (ppskEl) ppskEl.textContent = pps.ppsK.toFixed(4);
+
+              const poolSnaps = snapshots[cfg.id]?.snapshots || [];
+              const baseSnap = poolSnaps[0];
+              if (baseSnap && baseSnap.timestamp && apyEl) {
+                const elapsedMs = Math.max(1, Date.now() - new Date(baseSnap.timestamp).getTime());
+                const y = PoolMath.calculatePpsYield(pps.ppsK, baseSnap.pps_k, elapsedMs);
+                apyEl.textContent = `${y.apyPct.toFixed(1)}% APY`;
+              }
+            }
+          });
+        } catch (err) {
+          console.warn('Mini pool PPS lookup failed:', err);
+        }
+      }
+
+      // Update Node Status
+      function updateNodeStatus(node) {
+        if (!node) return;
+        nodePill.className = 'status-pill';
+        if (node.status === 'online') {
+          nodePill.classList.add('connected');
+          nodeText.textContent = `Node: ${node.latencyMs ? node.latencyMs + 'ms' : 'Online'}`;
+        } else if (node.status === 'connecting') {
+          nodePill.classList.add('connecting');
+          nodeText.textContent = 'Connecting...';
+        } else {
+          nodePill.classList.add('offline');
+          nodeText.textContent = 'Node Offline';
+        }
+      }
+
+      // Resolve manual account lookup
+      async function resolveManualAccount() {
+        const val = inputAccName.value.trim();
+        if (!val) return;
+        btnResolveAcc.disabled = true;
+        btnResolveAcc.textContent = '...';
+
+        try {
+          const acc = await B95.resolveAccount(val);
+          setAccount({ name: acc.name, id: acc.id });
+          inputAccName.value = '';
+          B95.notify('Account Selected', `Loaded ${acc.name} (${acc.id})`);
+        } catch (err) {
+          B95.notify('ioBanker Gateway', `Account lookup error: ${err.message || 'Account not found'}`);
+        } finally {
+          btnResolveAcc.disabled = false;
+          btnResolveAcc.textContent = 'Lookup';
+        }
+      }
+
+      function openPpsWindow() {
+        if (B95.embedded) {
+          B95.openApp('iobpps');
+        } else {
+          window.open('pps.html', '_blank');
+        }
+      }
+
+      // B95 Context integration
+      B95.onContext(({ account, node }) => {
+        updateNodeStatus(node);
+        if (account) {
+          setAccount(account);
+        } else if (!currentAccount) {
+          setAccount(null);
+        }
+      });
+
+      // UI Actions
+      btnDesktopLogin.addEventListener('click', () => {
+        B95.login();
+      });
+
+      btnResolveAcc.addEventListener('click', resolveManualAccount);
+      inputAccName.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') resolveManualAccount();
+      });
+
+      btnRefreshBal.addEventListener('click', () => {
+        if (currentAccount && currentAccount.id) {
+          fetchBalances(currentAccount.id);
+        }
+        fetchPoolPps();
+      });
+
+      btnOpenPools.addEventListener('click', () => {
+        B95.openApp('lprouter');
+      });
+
+      if (btnOpenPps) btnOpenPps.addEventListener('click', openPpsWindow);
+      if (tabPps) tabPps.addEventListener('click', openPpsWindow);
+      if (btnViewXrpPps) btnViewXrpPps.addEventListener('click', openPpsWindow);
+      if (btnViewXlmPps) btnViewXlmPps.addEventListener('click', openPpsWindow);
+
+      // Initial PPS fetch
+      setTimeout(fetchPoolPps, 500);
+
+    })();
+  </script>
+</body>
+</html>

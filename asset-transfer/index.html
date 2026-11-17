@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../shared/fonts.css">
+  <title>Transfer - BitShares Asset Transfer (Op 0)</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b0f1a;
+      --surface: #111827;
+      --surface2: #1a2235;
+      --surface3: #212c45;
+      --border: #1e2d45;
+      --border2: #2d3f60;
+      --accent: #88c0d0;
+      --green: #34d399;
+      --red: #f87171;
+      --yellow: #fbbf24;
+      --text: #eceff4;
+      --text-dim: #d8dee9;
+      --text-mute: #9aa3b5;
+      --mono: var(--font-mono);
+      --radius: 10px;
+      --radius-sm: 6px;
+      --tr: 180ms ease;
+    }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap { max-width: 640px; margin: 0 auto; padding: 16px 18px; }
+
+    /* Header */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 10px 0;
+      background: rgba(11, 15, 26, 0.94);
+      position: sticky; top: 0; z-index: 50;
+      backdrop-filter: blur(10px);
+    }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, #2b4c7e 0%, #0d9488 100%);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; color: #fff; flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .brand-name { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
+    .brand-sub { font-size: 11px; color: var(--text-mute); }
+    .status-pill {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 600; color: var(--text-dim);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 3px 10px;
+    }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-mute); }
+    .status-pill.connected .status-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-pill.connecting .status-dot { background: var(--yellow); }
+    .status-pill.offline .status-dot { background: var(--red); }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin-bottom: 14px;
+    }
+
+    /* Form */
+    .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+    .label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      color: var(--text-mute);
+      display: flex; justify-content: space-between; gap: 8px;
+    }
+    .label .avail { text-transform: none; letter-spacing: normal; font-weight: 600; font-family: var(--mono); color: var(--text-dim); }
+    .row { display: flex; gap: 8px; align-items: stretch; }
+    input[type=text] {
+      flex: 1; min-width: 0;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      padding: 8px 10px;
+      outline: none;
+    }
+    input[type=text]:focus { border-color: var(--accent); }
+    input[type=text]:disabled { opacity: 0.5; }
+    input.bad { border-color: var(--red); }
+    .resolved { font-size: 11px; font-family: var(--mono); color: var(--text-mute); min-height: 16px; }
+    .resolved.ok { color: var(--green); }
+    .resolved.err { color: var(--red); }
+
+    .from-box {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+    }
+    .from-name { font-size: 14px; font-weight: 700; }
+    .from-id { font-size: 11px; font-family: var(--mono); color: var(--text-mute); }
+    .lock { font-size: 11px; color: var(--text-mute); }
+
+    /* Buttons */
+    .btn {
+      font-family: inherit;
+      font-size: 12px; font-weight: 600;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 7px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border2);
+      background: var(--surface2);
+      color: var(--text);
+      cursor: pointer;
+      transition: var(--tr);
+      white-space: nowrap;
+    }
+    .btn:hover:not(:disabled) { background: var(--surface3); border-color: var(--accent); color: #fff; }
+    .btn:active:not(:disabled) { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: #2b4c7e; border-color: #3b82f6; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #3b82f6; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+    .warning-banner {
+      background: rgba(235, 203, 139, 0.08);
+      border: 1px solid rgba(235, 203, 139, 0.3);
+      border-left: 4px solid var(--yellow);
+      border-radius: var(--radius-sm);
+      padding: 9px 12px;
+      margin-bottom: 14px;
+      font-size: 12px; line-height: 1.45;
+      color: #fce7b2;
+      display: flex; align-items: flex-start; gap: 10px;
+    }
+
+    /* Review */
+    .review-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+    .summary { font-size: 14px; line-height: 1.6; }
+    .summary strong { color: var(--accent); }
+    .summary .mono { font-family: var(--mono); font-size: 12px; color: var(--text-mute); }
+    .kv { display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px; margin-top: 10px; font-size: 12px; }
+    .kv dt { color: var(--text-mute); }
+    .kv dd { font-family: var(--mono); color: var(--text-dim); word-break: break-all; }
+    .msgs { list-style: none; margin-top: 10px; font-size: 12px; display: flex; flex-direction: column; gap: 4px; }
+    .msgs li.err { color: var(--red); }
+    .msgs li.err::before { content: "✕ "; }
+    .msgs li.warn { color: var(--yellow); }
+    .msgs li.warn::before { content: "⚠ "; }
+    .hint { font-size: 11px; color: var(--text-mute); margin-top: 10px; }
+    details { margin-top: 12px; }
+    summary { cursor: pointer; font-size: 12px; color: var(--text-mute); }
+    pre {
+      margin-top: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      max-height: 260px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap header-inner" style="padding-top:0;padding-bottom:0">
+      <div class="brand">
+        <div class="brand-icon">⇄</div>
+        <div>
+          <div class="brand-name">Transfer</div>
+          <div class="brand-sub">BitShares asset transfer · Op 0</div>
+        </div>
+      </div>
+      <div class="status-pill connecting" id="node-pill"><span class="status-dot"></span><span id="node-text">Connecting...</span></div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="warning-banner">
+      <span>⚠</span>
+      <span>No memo is attached: memos must be encrypted with your memo key, which this page never sees.
+        Don't send to exchanges or gateways that need a memo or deposit tag; the funds may not be credited.</span>
+    </div>
+
+    <section class="card">
+      <div class="field">
+        <div class="label"><span>From</span><span class="lock">🔒 desktop login</span></div>
+        <div class="from-box">
+          <div>
+            <div class="from-name" id="from-name">Not logged in</div>
+            <div class="from-id" id="from-id">Log in on the desktop to send</div>
+          </div>
+          <button class="btn" id="btn-login" type="button">Login</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="in-asset"><span>Asset (symbol or 1.3.x)</span><span class="avail" id="avail"></span></label>
+        <input type="text" id="in-asset" list="asset-list" placeholder="BTS, XBTSX.USDT or 1.3.0" autocomplete="off" spellcheck="false" />
+        <datalist id="asset-list"></datalist>
+        <div class="resolved" id="asset-out"></div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="in-amount"><span>Amount</span></label>
+        <div class="row">
+          <input type="text" id="in-amount" inputmode="decimal" placeholder="0.0" autocomplete="off" spellcheck="false" />
+          <button class="btn" id="btn-max" type="button" disabled>Max</button>
+        </div>
+        <div class="resolved" id="amount-out"></div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="in-to"><span>To (account name or 1.2.x)</span></label>
+        <input type="text" id="in-to" placeholder="recipient-name" autocomplete="off" spellcheck="false" />
+        <div class="resolved" id="to-out"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="review-title">Review</div>
+      <div class="summary" id="summary">Fill in the asset, amount and recipient.</div>
+      <dl class="kv" id="review-kv" hidden></dl>
+      <ul class="msgs" id="msgs"></ul>
+      <div class="actions">
+        <button class="btn btn-primary" id="btn-sign" type="button" disabled>Sign in Beet</button>
+        <button class="btn" id="btn-download" type="button" disabled>Download JSON</button>
+        <button class="btn" id="btn-copy" type="button" disabled>Copy JSON</button>
+      </div>
+      <div class="hint" id="signer-hint">Nothing is signed here. In BeetVault, pick the From account before signing.</div>
+      <details>
+        <summary>Request JSON</summary>
+        <pre id="json-preview">—</pre>
+      </details>
+    </section>
+  </main>
+
+  <script src="../shared/b95-bridge.js"></script>
+  <script src="../shared/beetvault.js"></script>
+  <script src="transfer-engine.js"></script>
+  <script>
+    const T = window.TransferEngine;
+    const $ = (id) => document.getElementById(id);
+    const REBUILD_AFTER_MS = 10 * 60 * 1000; // rebuild before use so the hour-long expiration stays fresh
+
+    const state = {
+      from: null,          // { name, id } from the desktop login
+      asset: null,         // chain asset object
+      to: null,            // chain account object
+      balances: {},        // asset id → BigInt held by `from`
+      fee: null,           // BigInt BTS units, or null
+      request: null,
+      requestUnits: null,
+      requestBuiltAt: 0,
+    };
+    const assetCache = {}; // id → asset object
+    let assetSeq = 0, toSeq = 0, buildSeq = 0, balanceSeq = 0;
+
+    const setOut = (id, text, cls = '') => { const el = $(id); el.textContent = text; el.className = 'resolved' + (cls ? ' ' + cls : ''); };
+    const fmt = (units, asset) => `${T.formatAmount(units, asset.precision)} ${asset.symbol}`;
+    const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+
+    function cacheAssets(list) {
+      (list || []).forEach(a => { if (a && a.id) assetCache[a.id] = a; });
+    }
+
+    // ── Node pill ───────────────────────────────────────────────
+    function updateNodeStatus(node) {
+      if (!node) return;
+      const pill = $('node-pill');
+      pill.className = 'status-pill';
+      if (node.status === 'online') {
+        pill.classList.add('connected');
+        $('node-text').textContent = `Node: ${node.latencyMs ? node.latencyMs + 'ms' : 'Online'}`;
+      } else if (node.status === 'connecting') {
+        pill.classList.add('connecting');
+        $('node-text').textContent = 'Connecting...';
+      } else if (node.status === 'standalone') {
+        pill.classList.add('connected');
+        $('node-text').textContent = 'Standalone';
+      } else {
+        pill.classList.add('offline');
+        $('node-text').textContent = 'Node Offline';
+      }
+    }
+
+    // ── From (locked to the desktop login) ──────────────────────
+    function setFrom(account) {
+      const same = state.from && account && state.from.id === account.id;
+      state.from = account && account.id ? { name: account.name, id: account.id } : null;
+      $('from-name').textContent = state.from ? state.from.name : 'Not logged in';
+      $('from-id').textContent = state.from ? state.from.id : (B95.embedded ? 'Log in on the desktop to send' : 'Open Transfer from the desktop and log in to send');
+      $('btn-login').textContent = state.from ? 'Change' : 'Login';
+      $('btn-login').disabled = !B95.embedded;
+      ['in-asset', 'in-amount', 'in-to'].forEach(id => { $(id).disabled = !state.from; });
+      if (same) return; // context updates (node latency etc.) keep a built request
+      state.balances = {};
+      loadBalances();
+      recompute();
+    }
+
+    // All non-zero balances of `from`; held assets head the asset suggestions
+    async function loadBalances() {
+      const seq = ++balanceSeq;
+      if (!state.from) { renderAssetList([]); return; }
+      try {
+        const bals = await B95.rpc('get_account_balances', [state.from.id, []]);
+        if (seq !== balanceSeq) return;
+        const held = {};
+        (bals || []).forEach(b => { held[b.asset_id] = BigInt(b.amount); });
+        const missing = Object.keys(held).filter(id => !assetCache[id]);
+        if (missing.length) cacheAssets(await B95.rpc('get_objects', [missing]));
+        if (seq !== balanceSeq) return;
+        state.balances = held;
+        renderAssetList(Object.keys(held).filter(id => held[id] > 0n && assetCache[id]));
+      } catch (err) {
+        if (seq === balanceSeq) setOut('asset-out', `Couldn't load balances: ${err.message}`, 'err');
+      }
+      recompute();
+    }
+
+    let suggestionIds = [];
+    function renderAssetList(heldIds) {
+      const list = $('asset-list');
+      list.textContent = '';
+      const ids = [...new Set([...(heldIds || []), ...suggestionIds])];
+      ids.forEach(id => {
+        const a = assetCache[id];
+        if (!a) return;
+        const opt = document.createElement('option');
+        opt.value = a.symbol;
+        const bal = state.balances[id];
+        opt.label = bal ? `${T.formatAmount(bal, a.precision)} held · ${a.id}` : a.id;
+        list.appendChild(opt);
+      });
+    }
+    const heldIds = () => Object.keys(state.balances).filter(id => state.balances[id] > 0n && assetCache[id]);
+
+    // ── Asset: symbol or ID → asset object ──────────────────────
+    async function resolveAsset() {
+      const seq = ++assetSeq;
+      const parsed = T.parseAssetInput($('in-asset').value);
+      state.asset = null;
+      if (!$('in-asset').value.trim()) { setOut('asset-out', ''); recompute(); return; }
+      if (!parsed) { setOut('asset-out', 'Not a valid asset symbol or 1.3.x ID', 'err'); recompute(); return; }
+      setOut('asset-out', 'Looking up…');
+      try {
+        const [found] = await B95.rpc('lookup_asset_symbols', [[parsed.key]]);
+        if (seq !== assetSeq) return;
+        if (!found) {
+          setOut('asset-out', `No asset "${parsed.key}" on BitShares`, 'err');
+          if (parsed.kind === 'symbol') suggestAssets(parsed.key, seq);
+        } else {
+          cacheAssets([found]);
+          state.asset = found;
+          setOut('asset-out', `✓ ${found.symbol} · ${found.id} · precision ${found.precision}`, 'ok');
+          loadBalances(); // keeps Available current after earlier sends
+        }
+      } catch (err) {
+        if (seq === assetSeq) setOut('asset-out', `Lookup failed: ${err.message}`, 'err');
+      }
+      recompute();
+    }
+
+    // Symbols starting with what was typed, for the datalist
+    async function suggestAssets(prefix, seq) {
+      try {
+        const list = await B95.rpc('list_assets', [prefix, 10]);
+        if (seq !== assetSeq) return;
+        const matches = (list || []).filter(a => a.symbol.startsWith(prefix));
+        cacheAssets(matches);
+        suggestionIds = matches.map(a => a.id);
+        renderAssetList(heldIds());
+        if (matches.length) setOut('asset-out', `No asset "${prefix}". Did you mean ${matches.slice(0, 3).map(a => a.symbol).join(', ')}?`, 'err');
+      } catch (_) { /* suggestions are optional */ }
+    }
+
+    // ── Recipient: name or ID → account object ──────────────────
+    async function resolveTo() {
+      const seq = ++toSeq;
+      const text = $('in-to').value.trim();
+      state.to = null;
+      if (!text) { setOut('to-out', ''); recompute(); return; }
+      setOut('to-out', 'Looking up…');
+      try {
+        const acc = await B95.resolveAccount(text);
+        if (seq !== toSeq) return;
+        state.to = acc;
+        setOut('to-out', `✓ ${acc.name} · ${acc.id}`, 'ok');
+      } catch (err) {
+        if (seq === toSeq) setOut('to-out', err.message, 'err');
+      }
+      recompute();
+    }
+
+    async function loadFee() {
+      try {
+        state.fee = T.transferFee(await B95.rpc('get_global_properties', []));
+      } catch (_) {
+        state.fee = null;
+      }
+      recompute();
+    }
+
+    // ── Derive amount, checks and the request ───────────────────
+    function clearRequest() {
+      buildSeq++;
+      state.request = null;
+      ['btn-sign', 'btn-download', 'btn-copy'].forEach(id => { $(id).disabled = true; });
+      $('json-preview').textContent = '—';
+    }
+
+    function recompute() {
+      clearRequest();
+      const { from, asset, to, fee } = state;
+
+      // Available balance and Max
+      const bal = asset ? (state.balances[asset.id] || 0n) : null;
+      $('avail').textContent = asset && from ? `Available: ${fmt(bal, asset)}` : '';
+      $('btn-max').disabled = !asset || !from || T.maxSendable(bal, asset.id, fee) <= 0n;
+
+      // Amount, read against the current asset's precision every time
+      let units = null;
+      const amountText = $('in-amount').value;
+      $('in-amount').classList.remove('bad');
+      if (!amountText.trim()) {
+        setOut('amount-out', '');
+      } else if (!asset) {
+        setOut('amount-out', 'Choose an asset first');
+      } else {
+        const r = T.parseAmount(amountText, asset.precision);
+        if (r.ok) {
+          units = r.units;
+          setOut('amount-out', `= ${units} units of ${asset.symbol} (precision ${asset.precision})`, 'ok');
+        } else {
+          $('in-amount').classList.add('bad');
+          setOut('amount-out', r.error, 'err');
+        }
+      }
+
+      const msgs = $('msgs');
+      msgs.textContent = '';
+      const kv = $('review-kv');
+      if (!from || !asset || !to || units == null) {
+        $('summary').textContent = from ? 'Fill in the asset, amount and recipient.' : 'Log in on the desktop to send.';
+        kv.hidden = true;
+        return;
+      }
+
+      const { errors, warnings } = T.checkTransfer({
+        from, to, asset, units, balance: bal, coreBalance: state.balances[T.CORE_ASSET_ID] || 0n, fee
+      });
+      errors.forEach(m => addMsg(m, 'err'));
+      warnings.forEach(m => addMsg(m, 'warn'));
+
+      $('summary').innerHTML = '';
+      $('summary').append('Send ', strong(fmt(units, asset)), ' from ', strong(from.name), ' to ', strong(to.name));
+      kv.hidden = false;
+      kv.innerHTML = '';
+      [
+        ['from', from.id],
+        ['to', to.id],
+        ['asset_id', `${asset.id} (${asset.symbol}, precision ${asset.precision})`],
+        ['amount', `${units} units`],
+        ['network fee', fee != null ? `~${T.formatAmount(fee, 5)} BTS (BeetVault sets it)` : 'set by BeetVault'],
+      ].forEach(([k, v]) => {
+        const dt = document.createElement('dt'); dt.textContent = k;
+        const dd = document.createElement('dd'); dd.textContent = v;
+        kv.append(dt, dd);
+      });
+      $('signer-hint').textContent = `Nothing is signed here. In BeetVault, pick ${from.name} (${from.id}) before signing.`;
+
+      if (!errors.length) buildRequest(units);
+    }
+
+    function addMsg(text, cls) {
+      const li = document.createElement('li');
+      li.className = cls;
+      li.textContent = text;
+      $('msgs').appendChild(li);
+    }
+    function strong(text) { const s = document.createElement('strong'); s.textContent = text; return s; }
+
+    async function buildRequest(units) {
+      const seq = buildSeq;
+      const { from, to, asset } = state;
+      let chainTime = new Date();
+      try {
+        const dgp = await B95.rpc('get_dynamic_global_properties', []);
+        if (dgp && dgp.time) chainTime = dgp.time;
+      } catch (_) { /* fall back to this clock */ }
+      if (seq !== buildSeq) return; // inputs changed while waiting
+      const op = T.buildTransferOp({ from: from.id, to: to.id, assetId: asset.id, units });
+      state.request = BeetVault.buildRequest([op], { appName: 'Transfer', expiration: BeetVault.expirationFrom(chainTime) });
+      state.requestUnits = units;
+      state.requestBuiltAt = Date.now();
+      state.requestLabel = `${asset.symbol}_${to.name}`;
+      $('json-preview').textContent = BeetVault.requestJson(state.request);
+      ['btn-sign', 'btn-download', 'btn-copy'].forEach(id => { $(id).disabled = false; });
+    }
+
+    // A request left on screen for a while is rebuilt first so its expiration is fresh
+    async function freshRequest() {
+      if (state.request && Date.now() - state.requestBuiltAt > REBUILD_AFTER_MS) {
+        await buildRequest(state.requestUnits);
+      }
+      return state.request;
+    }
+
+    // ── Events ──────────────────────────────────────────────────
+    const resolveAssetSoon = debounce(resolveAsset, 350);
+    const resolveToSoon = debounce(resolveTo, 400);
+
+    $('in-asset').addEventListener('input', () => { state.asset = null; recompute(); resolveAssetSoon(); });
+    $('in-to').addEventListener('input', () => { state.to = null; recompute(); resolveToSoon(); });
+    $('in-amount').addEventListener('input', recompute);
+
+    $('btn-max').addEventListener('click', () => {
+      const { asset } = state;
+      if (!asset) return;
+      $('in-amount').value = T.formatAmount(T.maxSendable(state.balances[asset.id] || 0n, asset.id, state.fee), asset.precision);
+      recompute();
+    });
+
+    $('btn-login').addEventListener('click', () => B95.login());
+
+    $('btn-sign').addEventListener('click', async () => {
+      const request = await freshRequest();
+      if (!request || !BeetVault.launchDeeplink(request)) return;
+      B95.notify('Transfer', 'Sent the transfer to your Beet wallet for signing.');
+    });
+
+    $('btn-download').addEventListener('click', async () => {
+      const request = await freshRequest();
+      if (!request) return;
+      BeetVault.downloadRequest(request, `transfer_${state.requestLabel}_${Date.now()}.json`, { signer: state.from && state.from.name });
+    });
+
+    $('btn-copy').addEventListener('click', async () => {
+      const request = await freshRequest();
+      if (!request) return;
+      try {
+        await navigator.clipboard.writeText(BeetVault.requestJson(request));
+        $('btn-copy').textContent = 'Copied';
+        setTimeout(() => { $('btn-copy').textContent = 'Copy JSON'; }, 1500);
+      } catch (_) {
+        B95.notify('Transfer', 'Clipboard unavailable; use Download JSON.');
+      }
+    });
+
+    // ── Boot ────────────────────────────────────────────────────
+    let feeLoaded = false;
+    B95.onContext(({ account, node }) => {
+      updateNodeStatus(node);
+      setFrom(account);
+      if (!feeLoaded && node && (node.status === 'online' || node.status === 'standalone')) {
+        feeLoaded = true;
+        loadFee();
+      }
+    });
+  </script>
+</body>
+</html>

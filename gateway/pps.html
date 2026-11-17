@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="../shared/fonts.css">
+  <title>ioBanker LP PPS &amp; Annualized Yield</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b0f1a;
+      --surface: #111827;
+      --surface2: #1a2235;
+      --surface3: #212c45;
+      --border: #1e2d45;
+      --border2: #2d3f60;
+      --accent: #88c0d0;
+      --accent-glow: rgba(136, 192, 208, 0.18);
+      --xrp: #346aa9;
+      --xrp-light: #60a5fa;
+      --xrp-glow: rgba(52, 106, 169, 0.2);
+      --xlm: #2d6e5e;
+      --xlm-light: #34d399;
+      --xlm-glow: rgba(45, 110, 94, 0.2);
+      --bts: #00a4e4;
+      --green: #34d399;
+      --green-glow: rgba(52, 211, 153, 0.2);
+      --red: #f87171;
+      --yellow: #fbbf24;
+      --text: #eceff4;
+      --text-dim: #d8dee9;
+      --text-mute: #9aa3b5;
+      --mono: var(--font-mono);
+      --radius: 10px;
+      --radius-sm: 6px;
+      --tr: 180ms ease;
+    }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap { max-width: 1060px; margin: 0 auto; padding: 18px 20px; }
+
+    /* Header */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 12px 0;
+      background: rgba(11, 15, 26, 0.94);
+      position: sticky; top: 0; z-index: 50;
+      backdrop-filter: blur(10px);
+    }
+    .header-inner {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, #1d4ed8 0%, #0d9488 100%);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; color: #fff; flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .brand-name { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
+    .brand-sub { font-size: 11px; color: var(--text-mute); }
+
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .status-pill {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 600; color: var(--text-dim);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 3px 10px;
+    }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-mute); }
+    .status-pill.connected .status-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-pill.connecting .status-dot { background: var(--yellow); }
+    .status-pill.offline .status-dot { background: var(--red); }
+
+    /* Buttons */
+    .btn {
+      font-family: inherit; font-size: 12px; font-weight: 600;
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border2); background: var(--surface2);
+      color: var(--text); cursor: pointer; transition: var(--tr); text-decoration: none;
+    }
+    .btn:hover:not(:disabled) { background: var(--surface3); border-color: var(--accent); color: #fff; }
+    .btn:active:not(:disabled) { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: #2b4c7e; border-color: #3b82f6; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #3b82f6; }
+    .btn-sm { padding: 4px 8px; font-size: 11px; }
+
+    /* Snapshot Control Bar */
+    .control-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .control-group {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .control-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--text-mute);
+    }
+    .select-input {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 12px;
+      font-family: var(--mono);
+      padding: 5px 10px;
+      outline: none;
+      cursor: pointer;
+    }
+    .select-input:focus { border-color: var(--accent); }
+    .badge-info {
+      font-size: 11px; font-family: var(--mono);
+      color: var(--accent); background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 4px;
+      padding: 3px 8px;
+    }
+
+    /* Pool Matrix Grid */
+    .pool-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .pool-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .pool-card.xrp { border-top: 4px solid var(--xrp-light); }
+    .pool-card.xlm { border-top: 4px solid var(--xlm-light); }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+    }
+    .pool-title-group {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .pool-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800; color: #fff;
+    }
+    .pool-icon.xrp { background: #1d4ed8; }
+    .pool-icon.xlm { background: #0d9488; }
+    .pool-name { font-size: 16px; font-weight: 700; color: var(--text); }
+    .pool-id-tag {
+      font-size: 11px; font-family: var(--mono);
+      color: var(--text-mute); background: var(--surface2);
+      padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border);
+    }
+
+    /* Big Yield Highlight Box */
+    .yield-hero {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+    .yield-stat { display: flex; flex-direction: column; gap: 3px; }
+    .yield-stat-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--text-mute);
+    }
+    .yield-stat-value {
+      font-size: 24px; font-weight: 800; font-family: var(--mono);
+      line-height: 1.1; color: var(--green);
+    }
+    .yield-stat-sub { font-size: 11px; color: var(--text-mute); font-family: var(--mono); }
+
+    /* PPS Metrics Table */
+    .pps-table {
+      width: 100%; border-collapse: collapse; font-size: 12px;
+    }
+    .pps-table tr {
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .pps-table td {
+      padding: 7px 4px;
+    }
+    .pps-table td:first-child {
+      color: var(--text-mute); font-weight: 600;
+    }
+    .pps-table td:last-child {
+      text-align: right; font-family: var(--mono); font-weight: 600;
+    }
+    .highlight-val { color: var(--accent); }
+    .green-val { color: var(--green); }
+
+    /* Visual Ratio Bar */
+    .ratio-bar-wrap {
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .ratio-bar-labels {
+      display: flex; justify-content: space-between;
+      font-size: 11px; font-family: var(--mono); color: var(--text-mute);
+    }
+    .ratio-bar {
+      height: 6px; background: var(--surface2);
+      border-radius: 3px; overflow: hidden; display: flex;
+    }
+    .ratio-bar-a { background: var(--bts); }
+    .ratio-bar-b { background: var(--accent); }
+
+    /* Detail / Chart Section */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 14px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--text-dim); margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .chart-container {
+      position: relative; height: 180px; width: 100%;
+      background: #080d16; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); overflow: hidden;
+    }
+    canvas { width: 100%; height: 100%; display: block; }
+
+    /* User Position & Calculator */
+    .calc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+    }
+    .calc-box {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 14px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .calc-row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 12px;
+    }
+    .calc-row span:first-child { color: var(--text-mute); }
+    .calc-row span:last-child { font-family: var(--mono); font-weight: 600; }
+
+    /* Footer Note */
+    .footer-bar {
+      display: flex; flex-wrap: wrap; align-items: center;
+      justify-content: space-between; gap: 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px 18px;
+    }
+
+    @media (max-width: 768px) {
+      .pool-grid { grid-template-columns: 1fr; }
+      .control-card { flex-direction: column; align-items: stretch; }
+      .footer-bar { flex-direction: column; align-items: stretch; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="wrap header-inner">
+      <div class="brand">
+        <div class="brand-icon">📈</div>
+        <div>
+          <div class="brand-name">ioBanker LP Price Per Share (PPS)</div>
+          <div class="brand-sub">Nominal Swap-Fee Yield Tracker · BTS/IOB.XRP &amp; BTS/IOB.XLM</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="status-pill connected" id="node-pill">
+          <div class="status-dot"></div>
+          <span id="node-text">Connecting...</span>
+        </div>
+        <button class="btn btn-sm" id="btn-refresh">🔄 Refresh Chain</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <!-- Baseline Snapshot & Timeframe Selector -->
+    <div class="control-card">
+      <div class="control-group">
+        <span class="control-label">Baseline Snapshot:</span>
+        <select class="select-input" id="select-snapshot">
+          <option value="2026-10-01">2026-10-01 (Oct 01 Benchmark)</option>
+          <option value="2026-10-17">2026-10-17 (7 Days Ago)</option>
+        </select>
+        <div class="badge-info" id="timeframe-badge">Elapsed: 23.5 days</div>
+      </div>
+
+      <div class="control-group">
+        <span class="control-label">Head Block:</span>
+        <span class="badge-info" id="head-block-badge">#—</span>
+        <span class="control-label">BTS Ref:</span>
+        <span class="badge-info" id="bts-price-badge">$—</span>
+      </div>
+    </div>
+
+    <!-- Pools Grid -->
+    <div class="pool-grid">
+
+      <!-- Pool 1: BTS / IOB.XRP (1.19.133) -->
+      <div class="pool-card xrp">
+        <div class="card-header">
+          <div class="pool-title-group">
+            <div class="pool-icon xrp">XRP</div>
+            <div>
+              <div class="pool-name">BTS / IOB.XRP</div>
+              <div style="font-size: 11px; color: var(--text-mute);">LP Token: <strong>IOB.BTSXRP</strong> (1.3.6032)</div>
+            </div>
+          </div>
+          <div class="pool-id-tag">Pool 1.19.133 · 0.50% Fee</div>
+        </div>
+
+        <!-- Big Hero Yield Box -->
+        <div class="yield-hero">
+          <div class="yield-stat">
+            <span class="yield-stat-label">Fee Compounded APY</span>
+            <span class="yield-stat-value" id="xrp-apy-k">—%</span>
+            <span class="yield-stat-sub" id="xrp-apr-k">APR: —%</span>
+          </div>
+          <div class="yield-stat">
+            <span class="yield-stat-label">Pure Invariant PPS (PPS<sub>k</sub>)</span>
+            <span class="yield-stat-value highlight-val" id="xrp-val-ppsk" style="font-size: 20px;">—</span>
+            <span class="yield-stat-sub" id="xrp-delta-ppsk">Δ vs baseline: —%</span>
+          </div>
+        </div>
+
+        <!-- Metric Details Table -->
+        <table class="pps-table">
+          <tbody>
+            <tr>
+              <td>Native XRP PPS (2·R<sub>XRP</sub> / S)</td>
+              <td class="highlight-val" id="xrp-val-pps-iob">— XRP</td>
+            </tr>
+            <tr>
+              <td>Native BTS PPS (2·R<sub>BTS</sub> / S)</td>
+              <td id="xrp-val-pps-bts">— BTS</td>
+            </tr>
+            <tr>
+              <td>Redemption Claim (1 LP Share)</td>
+              <td id="xrp-val-claim">— BTS + — XRP</td>
+            </tr>
+            <tr>
+              <td>Estimated Share Value (USD)</td>
+              <td class="green-val" id="xrp-val-usd">$—</td>
+            </tr>
+            <tr>
+              <td>Pool Reserves</td>
+              <td id="xrp-val-reserves">— BTS / — XRP</td>
+            </tr>
+            <tr>
+              <td>LP Share Total Supply</td>
+              <td id="xrp-val-supply">— IOB.BTSXRP</td>
+            </tr>
+            <tr>
+              <td>Internal Spot Rate</td>
+              <td id="xrp-val-spot">1 XRP ≈ — BTS</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Ratio bar -->
+        <div class="ratio-bar-wrap">
+          <div class="ratio-bar-labels">
+            <span>BTS Reserve (50% value)</span>
+            <span>IOB.XRP Reserve (50% value)</span>
+          </div>
+          <div class="ratio-bar">
+            <div class="ratio-bar-a" style="width: 50%;"></div>
+            <div class="ratio-bar-b" style="width: 50%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pool 2: BTS / IOB.XLM (1.19.399) -->
+      <div class="pool-card xlm">
+        <div class="card-header">
+          <div class="pool-title-group">
+            <div class="pool-icon xlm">XLM</div>
+            <div>
+              <div class="pool-name">BTS / IOB.XLM</div>
+              <div style="font-size: 11px; color: var(--text-mute);">LP Token: <strong>IOB.BTSXLM</strong> (1.3.6445)</div>
+            </div>
+          </div>
+          <div class="pool-id-tag">Pool 1.19.399 · 0.50% Fee</div>
+        </div>
+
+        <!-- Big Hero Yield Box -->
+        <div class="yield-hero">
+          <div class="yield-stat">
+            <span class="yield-stat-label">Fee Compounded APY</span>
+            <span class="yield-stat-value" id="xlm-apy-k">—%</span>
+            <span class="yield-stat-sub" id="xlm-apr-k">APR: —%</span>
+          </div>
+          <div class="yield-stat">
+            <span class="yield-stat-label">Pure Invariant PPS (PPS<sub>k</sub>)</span>
+            <span class="yield-stat-value highlight-val" id="xlm-val-ppsk" style="font-size: 20px;">—</span>
+            <span class="yield-stat-sub" id="xlm-delta-ppsk">Δ vs baseline: —%</span>
+          </div>
+        </div>
+
+        <!-- Metric Details Table -->
+        <table class="pps-table">
+          <tbody>
+            <tr>
+              <td>Native XLM PPS (2·R<sub>XLM</sub> / S)</td>
+              <td class="highlight-val" id="xlm-val-pps-iob">— XLM</td>
+            </tr>
+            <tr>
+              <td>Native BTS PPS (2·R<sub>BTS</sub> / S)</td>
+              <td id="xlm-val-pps-bts">— BTS</td>
+            </tr>
+            <tr>
+              <td>Redemption Claim (1 LP Share)</td>
+              <td id="xlm-val-claim">— BTS + — XLM</td>
+            </tr>
+            <tr>
+              <td>Estimated Share Value (USD)</td>
+              <td class="green-val" id="xlm-val-usd">$—</td>
+            </tr>
+            <tr>
+              <td>Pool Reserves</td>
+              <td id="xlm-val-reserves">— BTS / — XLM</td>
+            </tr>
+            <tr>
+              <td>LP Share Total Supply</td>
+              <td id="xlm-val-supply">— IOB.BTSXLM</td>
+            </tr>
+            <tr>
+              <td>Internal Spot Rate</td>
+              <td id="xlm-val-spot">1 XLM ≈ — BTS</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Ratio bar -->
+        <div class="ratio-bar-wrap">
+          <div class="ratio-bar-labels">
+            <span>BTS Reserve (50% value)</span>
+            <span>IOB.XLM Reserve (50% value)</span>
+          </div>
+          <div class="ratio-bar">
+            <div class="ratio-bar-a" style="width: 50%;"></div>
+            <div class="ratio-bar-b" style="width: 50%;"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- PPS History Trajectory Chart -->
+    <div class="card">
+      <div class="card-title">
+        <span>Historical PPS Invariant Trajectory</span>
+        <span style="font-size: 11px; color: var(--text-mute); font-family: var(--mono);">Invariant Growth reflects accumulated 0.50% swap fees</span>
+      </div>
+      <div class="chart-container">
+        <canvas id="pps-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Account Position & Yield Calculator -->
+    <div class="card">
+      <div class="card-title">
+        <span>Account LP Holdings &amp; Yield Estimator</span>
+        <span id="account-label" style="font-size: 11px; font-family: var(--mono); color: var(--accent);">Logged out</span>
+      </div>
+
+      <div class="calc-grid">
+        <!-- XRP Position -->
+        <div class="calc-box">
+          <div style="font-weight: 700; color: var(--xrp-light); display: flex; justify-content: space-between;">
+            <span>IOB.BTSXRP Position</span>
+            <span id="user-xrp-shares">0.00 Shares</span>
+          </div>
+          <div class="calc-row">
+            <span>Pool Ownership</span>
+            <span id="user-xrp-pct">0.0000%</span>
+          </div>
+          <div class="calc-row">
+            <span>Claim Value</span>
+            <span id="user-xrp-claim">0 BTS + 0 XRP</span>
+          </div>
+          <div class="calc-row">
+            <span>Projected 30-Day Accrued Fee</span>
+            <span class="green-val" id="user-xrp-30d">+0.00 XRP</span>
+          </div>
+          <div class="calc-row">
+            <span>Projected Annual Return</span>
+            <span class="green-val" id="user-xrp-annual">+0.00 XRP</span>
+          </div>
+        </div>
+
+        <!-- XLM Position -->
+        <div class="calc-box">
+          <div style="font-weight: 700; color: var(--xlm-light); display: flex; justify-content: space-between;">
+            <span>IOB.BTSXLM Position</span>
+            <span id="user-xlm-shares">0.00 Shares</span>
+          </div>
+          <div class="calc-row">
+            <span>Pool Ownership</span>
+            <span id="user-xlm-pct">0.0000%</span>
+          </div>
+          <div class="calc-row">
+            <span>Claim Value</span>
+            <span id="user-xlm-claim">0 BTS + 0 XLM</span>
+          </div>
+          <div class="calc-row">
+            <span>Projected 30-Day Accrued Fee</span>
+            <span class="green-val" id="user-xlm-30d">+0.00 XLM</span>
+          </div>
+          <div class="calc-row">
+            <span>Projected Annual Return</span>
+            <span class="green-val" id="user-xlm-annual">+0.00 XLM</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions Bar -->
+    <div class="footer-bar">
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="btn" id="btn-save-checkpoint">📸 Save Snapshot Locally</button>
+        <button class="btn" id="btn-download-json">📥 Download Snapshots (.json)</button>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="btn" id="btn-open-gateway">🌉 Open Gateway Bridge</button>
+        <button class="btn btn-primary" id="btn-open-swaps">🔀 Swap in LP Router</button>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="../shared/b95-bridge.js"></script>
+  <script src="../shared/pool-math.js"></script>
+  <script src="pps-snapshots.js"></script>
+  <script>
+    (() => {
+      'use strict';
+      // Canvas text can't read CSS variables: resolve the shared font stacks (shared/fonts.css) once
+      const FONT_UI = getComputedStyle(document.documentElement).getPropertyValue('--font-ui').trim() || 'sans-serif';
+      const FONT_MONO = getComputedStyle(document.documentElement).getPropertyValue('--font-mono').trim() || 'monospace';
+
+      const CONFIG = {
+        pools: {
+          '1.19.133': {
+            id: '1.19.133',
+            name: 'BTS / IOB.XRP',
+            shareAssetId: '1.3.6032',
+            sharePrecision: 5,
+            dynId: '2.3.6032',
+            assetA: { id: '1.3.0', symbol: 'BTS', precision: 5 },
+            assetB: { id: '1.3.5537', symbol: 'IOB.XRP', precision: 4 },
+            prefix: 'xrp'
+          },
+          '1.19.399': {
+            id: '1.19.399',
+            name: 'BTS / IOB.XLM',
+            shareAssetId: '1.3.6445',
+            sharePrecision: 5,
+            dynId: '2.3.6445',
+            assetA: { id: '1.3.0', symbol: 'BTS', precision: 5 },
+            assetB: { id: '1.3.6444', symbol: 'IOB.XLM', precision: 4 },
+            prefix: 'xlm'
+          }
+        },
+        refPoolId: '1.19.48'
+      };
+
+      let snapshotData = window.IOB_PPS_SNAPSHOTS || { pools: {} };
+      let liveChainData = {};
+      let currentAccount = null;
+      let activeSnapshotId = '2026-10-01';
+      let btsUsdPrice = 0;
+
+      // DOM Elements
+      const nodePill = document.getElementById('node-pill');
+      const nodeText = document.getElementById('node-text');
+      const btnRefresh = document.getElementById('btn-refresh');
+      const selectSnapshot = document.getElementById('select-snapshot');
+      const timeframeBadge = document.getElementById('timeframe-badge');
+      const headBlockBadge = document.getElementById('head-block-badge');
+      const btsPriceBadge = document.getElementById('bts-price-badge');
+      const accountLabel = document.getElementById('account-label');
+      const btnSaveCheckpoint = document.getElementById('btn-save-checkpoint');
+      const btnDownloadJson = document.getElementById('btn-download-json');
+      const btnOpenGateway = document.getElementById('btn-open-gateway');
+      const btnOpenSwaps = document.getElementById('btn-open-swaps');
+
+      // Attempt to load fresh pps_snapshots.json if on HTTP, then merge any local checkpoints
+      async function loadSnapshotJson() {
+        try {
+          const res = await fetch('pps_snapshots.json');
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.pools) {
+              snapshotData = data;
+              window.IOB_PPS_SNAPSHOTS = data;
+            }
+          }
+        } catch (_) {
+          // Keep existing window.IOB_PPS_SNAPSHOTS
+        }
+        try {
+          const saved = JSON.parse(localStorage.getItem('b95-iob-pps-snapshots') || 'null');
+          if (saved && saved.pools) {
+            Object.entries(saved.pools).forEach(([poolId, entry]) => {
+              if (!Array.isArray(entry?.snapshots)) return;
+              const target = snapshotData.pools[poolId] || (snapshotData.pools[poolId] = { snapshots: [] });
+              const seen = new Set((target.snapshots || []).map(s => s.id));
+              entry.snapshots.forEach(s => {
+                if (s && s.id && !seen.has(s.id)) {
+                  target.snapshots.push(s);
+                  seen.add(s.id);
+                }
+              });
+            });
+          }
+        } catch (_) {
+          // localStorage unavailable in strict file:// mode
+        }
+        populateSnapshotSelect();
+      }
+
+      function populateSnapshotSelect() {
+        const pool133 = snapshotData.pools && snapshotData.pools['1.19.133'];
+        if (!pool133 || !Array.isArray(pool133.snapshots)) return;
+
+        const curVal = selectSnapshot.value;
+        selectSnapshot.innerHTML = '';
+        pool133.snapshots.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = `${s.id} (${s.label || s.timestamp.slice(0, 10)})`;
+          selectSnapshot.appendChild(opt);
+        });
+
+        if ([...selectSnapshot.options].some(o => o.value === curVal)) {
+          selectSnapshot.value = curVal;
+        } else if (selectSnapshot.options.length > 0) {
+          selectSnapshot.value = selectSnapshot.options[0].value;
+        }
+        activeSnapshotId = selectSnapshot.value;
+      }
+
+      // Query chain for live pool & share state
+      async function queryLivePools() {
+        btnRefresh.disabled = true;
+        btnRefresh.textContent = '...';
+
+        try {
+          const reqIds = ['1.19.133', '1.19.399', CONFIG.refPoolId, '2.3.6032', '2.3.6445'];
+          const [dgp, objects] = await Promise.all([
+            B95.rpc('get_dynamic_global_properties', []),
+            B95.rpc('get_objects', [reqIds])
+          ]);
+
+          if (dgp) {
+            headBlockBadge.textContent = `#${dgp.head_block_number}`;
+          }
+
+          const objMap = {};
+          if (Array.isArray(objects)) {
+            objects.forEach(o => { if (o) objMap[o.id] = o; });
+          }
+
+          // Reference pool BTS/USDT
+          const refPool = objMap[CONFIG.refPoolId];
+          if (refPool) {
+            const btsBal = Number(refPool.balance_a) / 1e5;
+            const usdtBal = Number(refPool.balance_b) / 1e6;
+            if (btsBal > 0) {
+              btsUsdPrice = usdtBal / btsBal;
+              btsPriceBadge.textContent = `$${btsUsdPrice.toFixed(4)}`;
+            }
+          }
+
+          // Process each target pool
+          Object.values(CONFIG.pools).forEach(cfg => {
+            const poolObj = objMap[cfg.id];
+            const dynObj = objMap[cfg.dynId];
+            if (poolObj && dynObj) {
+              const pps = PoolMath.calculatePoolPps(poolObj, cfg.assetA, cfg.assetB, dynObj.current_supply, {
+                sharePrecision: cfg.sharePrecision,
+                usdRefs: { usdPerBts: btsUsdPrice }
+              });
+              liveChainData[cfg.id] = {
+                pool: poolObj,
+                dyn: dynObj,
+                pps,
+                timestamp: new Date().toISOString()
+              };
+            }
+          });
+
+          renderPoolMetrics();
+          renderChart();
+          if (currentAccount && currentAccount.id) {
+            fetchUserLpBalances(currentAccount.id);
+          }
+        } catch (err) {
+          console.error('Failed to query live chain pools:', err);
+        } finally {
+          btnRefresh.disabled = false;
+          btnRefresh.textContent = '🔄 Refresh Chain';
+        }
+      }
+
+      function renderPoolMetrics() {
+        Object.values(CONFIG.pools).forEach(cfg => {
+          const live = liveChainData[cfg.id];
+          if (!live) return;
+
+          const pps = live.pps;
+          const p = cfg.prefix;
+
+          // Find baseline snapshot
+          const snapshots = snapshotData.pools?.[cfg.id]?.snapshots || [];
+          const baseSnap = snapshots.find(s => s.id === activeSnapshotId) || snapshots[0];
+
+          let yieldK = { aprPct: 0, apyPct: 0, growthPct: 0, elapsedDays: 0 };
+          if (baseSnap && baseSnap.timestamp) {
+            const elapsedMs = Math.max(1, new Date(live.timestamp).getTime() - new Date(baseSnap.timestamp).getTime());
+            yieldK = PoolMath.calculatePpsYield(pps.ppsK, baseSnap.pps_k, elapsedMs);
+            timeframeBadge.textContent = `Elapsed: ${yieldK.elapsedDays.toFixed(1)} days`;
+          }
+
+          // Populate DOM
+          const apyEl = document.getElementById(`${p}-apy-k`);
+          const aprEl = document.getElementById(`${p}-apr-k`);
+          const ppskEl = document.getElementById(`${p}-val-ppsk`);
+          const deltaEl = document.getElementById(`${p}-delta-ppsk`);
+          const ppsIobEl = document.getElementById(`${p}-val-pps-iob`);
+          const ppsBtsEl = document.getElementById(`${p}-val-pps-bts`);
+          const claimEl = document.getElementById(`${p}-val-claim`);
+          const usdEl = document.getElementById(`${p}-val-usd`);
+          const reservesEl = document.getElementById(`${p}-val-reserves`);
+          const supplyEl = document.getElementById(`${p}-val-supply`);
+          const spotEl = document.getElementById(`${p}-val-spot`);
+
+          if (apyEl) apyEl.textContent = `${yieldK.apyPct.toFixed(2)}%`;
+          if (aprEl) aprEl.textContent = `APR: ${yieldK.aprPct.toFixed(2)}%`;
+          if (ppskEl) ppskEl.textContent = pps.ppsK.toFixed(6);
+          if (deltaEl) deltaEl.textContent = `Δ vs baseline: ${yieldK.growthPct >= 0 ? '+' : ''}${yieldK.growthPct.toFixed(2)}%`;
+          if (ppsIobEl) ppsIobEl.textContent = `${pps.ppsB.toFixed(6)} ${cfg.assetB.symbol.replace('IOB.', '')}`;
+          if (ppsBtsEl) ppsBtsEl.textContent = `${pps.ppsA.toFixed(4)} BTS`;
+          if (claimEl) claimEl.textContent = `${pps.aPerShare.toFixed(4)} BTS + ${pps.bPerShare.toFixed(5)} ${cfg.assetB.symbol.replace('IOB.', '')}`;
+          if (usdEl) usdEl.textContent = `$${pps.lpUsdValue.toFixed(4)} / share`;
+          if (reservesEl) reservesEl.textContent = `${pps.balA.toLocaleString(undefined, {maximumFractionDigits: 1})} BTS / ${pps.balB.toLocaleString(undefined, {maximumFractionDigits: 2})} ${cfg.assetB.symbol.replace('IOB.', '')}`;
+          if (supplyEl) supplyEl.textContent = `${pps.shareSupply.toLocaleString(undefined, {maximumFractionDigits: 2})} Shares`;
+          if (spotEl) spotEl.textContent = `1 ${cfg.assetB.symbol.replace('IOB.', '')} ≈ ${pps.spotPriceBInA.toFixed(2)} BTS`;
+        });
+      }
+
+      // Draw Retro Win95 / CRT style Canvas Chart
+      function renderChart() {
+        const canvas = document.getElementById('pps-chart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+
+        const w = rect.width;
+        const h = rect.height;
+
+        // Background
+        ctx.fillStyle = '#080d16';
+        ctx.fillRect(0, 0, w, h);
+
+        // Retro CRT grid
+        ctx.strokeStyle = '#122538';
+        ctx.lineWidth = 1;
+        const gridStepX = w / 6;
+        const gridStepY = h / 4;
+        for (let x = 0; x < w; x += gridStepX) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+        }
+        for (let y = 0; y < h; y += gridStepY) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+        }
+
+        // Gather points for XRP (1.19.133) and XLM (1.19.399)
+        const poolsToDraw = [
+          { id: '1.19.133', color: '#60a5fa', name: 'BTS/XRP' },
+          { id: '1.19.399', color: '#34d399', name: 'BTS/XLM' }
+        ];
+
+        poolsToDraw.forEach((pCfg, pIdx) => {
+          const snapshots = snapshotData.pools?.[pCfg.id]?.snapshots || [];
+          const pts = snapshots.map(s => ({ t: new Date(s.timestamp).getTime(), val: s.pps_k }));
+
+          const live = liveChainData[pCfg.id];
+          if (live && live.pps) {
+            pts.push({ t: new Date(live.timestamp).getTime(), val: live.pps.ppsK });
+          }
+
+          if (pts.length < 2) return;
+
+          const minVal = Math.min(...pts.map(p => p.val)) * 0.98;
+          const maxVal = Math.max(...pts.map(p => p.val)) * 1.02;
+          const minT = pts[0].t;
+          const maxT = pts[pts.length - 1].t;
+          const spanT = Math.max(1, maxT - minT);
+
+          ctx.strokeStyle = pCfg.color;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+
+          pts.forEach((pt, i) => {
+            const x = 30 + ((pt.t - minT) / spanT) * (w - 60);
+            const y = h - 25 - ((pt.val - minVal) / (maxVal - minVal)) * (h - 50);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          });
+          ctx.stroke();
+
+          // Dots and text
+          pts.forEach((pt, i) => {
+            const x = 30 + ((pt.t - minT) / spanT) * (w - 60);
+            const y = h - 25 - ((pt.val - minVal) / (maxVal - minVal)) * (h - 50);
+            ctx.fillStyle = pCfg.color;
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (i === pts.length - 1) {
+              ctx.font = `10px ${FONT_MONO}`;
+              ctx.fillText(`${pCfg.name}: ${pt.val.toFixed(4)}`, x - 75, y - 8);
+            }
+          });
+        });
+      }
+
+      // User LP Balances & Yield Projection
+      async function fetchUserLpBalances(accountId) {
+        if (!accountId) return;
+        try {
+          const shareAssetIds = ['1.3.6032', '1.3.6445'];
+          const bals = await B95.rpc('get_account_balances', [accountId, shareAssetIds]);
+
+          let xrpShareRaw = 0;
+          let xlmShareRaw = 0;
+
+          if (Array.isArray(bals)) {
+            bals.forEach(b => {
+              if (b.asset_id === '1.3.6032') xrpShareRaw = Number(b.amount);
+              if (b.asset_id === '1.3.6445') xlmShareRaw = Number(b.amount);
+            });
+          }
+
+          const live133 = liveChainData['1.19.133'];
+          const live399 = liveChainData['1.19.399'];
+
+          // XRP calculation
+          if (live133 && live133.pps) {
+            const pps = live133.pps;
+            const userShares = xrpShareRaw / 1e5;
+            const pct = pps.shareSupply > 0 ? (userShares / pps.shareSupply) * 100 : 0;
+            const claimBts = userShares * pps.aPerShare;
+            const claimXrp = userShares * pps.bPerShare;
+
+            document.getElementById('user-xrp-shares').textContent = `${userShares.toLocaleString(undefined, {maximumFractionDigits: 2})} Shares`;
+            document.getElementById('user-xrp-pct').textContent = `${pct.toFixed(4)}%`;
+            document.getElementById('user-xrp-claim').textContent = `${claimBts.toFixed(2)} BTS + ${claimXrp.toFixed(2)} XRP`;
+
+            // 0.50% fee velocity projection (using pool APY)
+            const apyPct = parseFloat(document.getElementById('xrp-apy-k').textContent) || 0;
+            const dailyRate = (apyPct / 100) / 365.25;
+            const est30dXrp = claimXrp * dailyRate * 30;
+            const estAnnualXrp = claimXrp * (apyPct / 100);
+
+            document.getElementById('user-xrp-30d').textContent = `+${est30dXrp.toFixed(3)} XRP`;
+            document.getElementById('user-xrp-annual').textContent = `+${estAnnualXrp.toFixed(2)} XRP (${apyPct.toFixed(1)}% APY)`;
+          }
+
+          // XLM calculation
+          if (live399 && live399.pps) {
+            const pps = live399.pps;
+            const userShares = xlmShareRaw / 1e5;
+            const pct = pps.shareSupply > 0 ? (userShares / pps.shareSupply) * 100 : 0;
+            const claimBts = userShares * pps.aPerShare;
+            const claimXlm = userShares * pps.bPerShare;
+
+            document.getElementById('user-xlm-shares').textContent = `${userShares.toLocaleString(undefined, {maximumFractionDigits: 2})} Shares`;
+            document.getElementById('user-xlm-pct').textContent = `${pct.toFixed(4)}%`;
+            document.getElementById('user-xlm-claim').textContent = `${claimBts.toFixed(2)} BTS + ${claimXlm.toFixed(2)} XLM`;
+
+            const apyPct = parseFloat(document.getElementById('xlm-apy-k').textContent) || 0;
+            const dailyRate = (apyPct / 100) / 365.25;
+            const est30dXlm = claimXlm * dailyRate * 30;
+            const estAnnualXlm = claimXlm * (apyPct / 100);
+
+            document.getElementById('user-xlm-30d').textContent = `+${est30dXlm.toFixed(3)} XLM`;
+            document.getElementById('user-xlm-annual').textContent = `+${estAnnualXlm.toFixed(2)} XLM (${apyPct.toFixed(1)}% APY)`;
+          }
+        } catch (err) {
+          console.warn('Failed to fetch user LP balances:', err);
+        }
+      }
+
+      // Update Node Status
+      function updateNodeStatus(node) {
+        if (!node) return;
+        nodePill.className = 'status-pill';
+        if (node.status === 'online') {
+          nodePill.classList.add('connected');
+          nodeText.textContent = `Node: ${node.latencyMs ? node.latencyMs + 'ms' : 'Online'}`;
+        } else if (node.status === 'connecting') {
+          nodePill.classList.add('connecting');
+          nodeText.textContent = 'Connecting...';
+        } else {
+          nodePill.classList.add('offline');
+          nodeText.textContent = 'Node Offline';
+        }
+      }
+
+      // Save live snapshot to localStorage
+      function saveCheckpointLocally() {
+        if (!liveChainData['1.19.133'] || !liveChainData['1.19.399']) {
+          B95.notify('LP PPS', 'Chain data not ready yet');
+          return;
+        }
+
+        const now = new Date();
+        const dateStr = now.toISOString().slice(0, 10);
+        const timeStr = now.toLocaleTimeString();
+        const snapId = `${dateStr}-${Date.now().toString().slice(-4)}`;
+
+        Object.values(CONFIG.pools).forEach(cfg => {
+          const live = liveChainData[cfg.id];
+          const poolEntry = snapshotData.pools[cfg.id] || (snapshotData.pools[cfg.id] = { snapshots: [] });
+          poolEntry.snapshots.push({
+            id: snapId,
+            label: `Local ${dateStr} ${timeStr}`,
+            timestamp: now.toISOString(),
+            bal_a: live.pps.balA,
+            bal_b: live.pps.balB,
+            share_supply: live.pps.shareSupply,
+            pps_k: live.pps.ppsK,
+            pps_bts: live.pps.ppsA,
+            pps_iob: live.pps.ppsB,
+            lp_usd: live.pps.lpUsdValue
+          });
+        });
+
+        try {
+          localStorage.setItem('b95-iob-pps-snapshots', JSON.stringify(snapshotData));
+        } catch (_) { /* per-browser convenience only */ }
+        populateSnapshotSelect();
+        selectSnapshot.value = snapId;
+        activeSnapshotId = snapId;
+        renderPoolMetrics();
+        renderChart();
+        B95.notify('Snapshot Recorded', `Saved local checkpoint ${snapId}`);
+      }
+
+      // Download snapshot JSON
+      function downloadSnapshotJson() {
+        const str = JSON.stringify(snapshotData, null, 2);
+        const blob = new Blob([str], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `pps_snapshots_${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      // B95 Context hook
+      B95.onContext(({ account, node }) => {
+        updateNodeStatus(node);
+        if (account) {
+          currentAccount = account;
+          accountLabel.textContent = `Account: ${account.name || account.id} (${account.id})`;
+          fetchUserLpBalances(account.id);
+        } else {
+          currentAccount = null;
+          accountLabel.textContent = 'Not logged in (Login via Desktop)';
+        }
+      });
+
+      // Event Listeners
+      btnRefresh.addEventListener('click', queryLivePools);
+      selectSnapshot.addEventListener('change', () => {
+        activeSnapshotId = selectSnapshot.value;
+        renderPoolMetrics();
+        renderChart();
+      });
+
+      btnSaveCheckpoint.addEventListener('click', saveCheckpointLocally);
+      btnDownloadJson.addEventListener('click', downloadSnapshotJson);
+
+      btnOpenGateway.addEventListener('click', () => {
+        B95.openApp('gateway');
+      });
+
+      btnOpenSwaps.addEventListener('click', () => {
+        B95.openApp('lprouter');
+      });
+
+      window.addEventListener('resize', renderChart);
+
+      // Startup
+      loadSnapshotJson().then(() => {
+        queryLivePools();
+      });
+
+    })();
+  </script>
+</body>
+</html>

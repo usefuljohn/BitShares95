@@ -1,0 +1,2423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="shared/fonts.css">
+  <title>DaoStreet Workstation</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2l12 7v14l-12 7-12-7V9z' fill='%232e3440' stroke='%2388c0d0' stroke-width='2'/%3E%3Cpath d='M10 20l6-9 6 9z' fill='none' stroke='%23eceff4' stroke-width='1.6' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='11' r='2.4' fill='%2388c0d0'/%3E%3Ccircle cx='10' cy='20' r='2.4' fill='%23a3be8c'/%3E%3Ccircle cx='22' cy='20' r='2.4' fill='%23ebcb8b'/%3E%3C/svg%3E">
+  <style>
+    /* Palette after Nord (MIT, arcticicestudio). Fonts are open (OFL/Apache) when
+       installed; otherwise the platform's own UI and monospace fonts are used. */
+    :root {
+      --bg0: #242933;
+      --bg1: #2e3440;
+      --bg2: #3b4252;
+      --bg3: #434c5e;
+      --bg4: #4c566a;
+      --fg: #eceff4;
+      --fg-dim: #d8dee9;
+      --muted: #9aa3b5;
+      --accent: #88c0d0;
+      --accent-2: #81a1c1;
+      --accent-3: #5e81ac;
+      --red: #bf616a;
+      --orange: #d08770;
+      --yellow: #ebcb8b;
+      --green: #a3be8c;
+      --purple: #b48ead;
+      --radius: 8px;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.35);
+      --taskbar-h: 40px;
+      color-scheme: dark;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      /* Procedural wallpaper; a background.jpg/png next to this file replaces it (see start-up) */
+      background:
+        radial-gradient(ellipse 70% 60% at 15% 0%, rgba(136, 192, 208, 0.16), transparent 70%),
+        radial-gradient(ellipse 60% 50% at 100% 100%, rgba(180, 142, 173, 0.13), transparent 70%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Cpath d='M48 0H0v48' fill='none' stroke='%23ffffff' stroke-opacity='0.035'/%3E%3C/svg%3E"),
+        linear-gradient(160deg, var(--bg0), var(--bg1) 60%, var(--bg2));
+      background-attachment: fixed;
+      color: var(--fg);
+      font-family: var(--font-ui);
+      font-size: 13px;
+      user-select: none;
+      -webkit-user-select: none;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      position: relative;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+    }
+
+    /* Raised surface and recessed well */
+    .panel {
+      background: var(--bg1);
+      border: 1px solid var(--bg3);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .well {
+      background: var(--bg0);
+      border: 1px solid var(--bg3);
+      border-radius: 4px;
+      color: var(--fg);
+    }
+
+    .btn {
+      background: var(--bg3);
+      border: 1px solid var(--bg4);
+      border-radius: 5px;
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 4px 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--fg);
+      text-decoration: none;
+    }
+    .btn:hover:not(:disabled) {
+      background: var(--bg4);
+    }
+    .btn.active {
+      background: var(--bg4);
+      box-shadow: inset 0 -2px 0 var(--accent);
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-primary {
+      background: var(--accent-3);
+      border-color: var(--accent-2);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-2);
+    }
+
+    /* Window components */
+    .win-window {
+      background: var(--bg1);
+      border: 1px solid var(--bg3);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      touch-action: none;
+    }
+    .win-window.maximized {
+      left: 0 !important;
+      top: 0 !important;
+      width: 100vw !important;
+      height: calc(100vh - var(--taskbar-h)) !important;
+      border-radius: 0;
+    }
+    .win-window.minimized {
+      display: none;
+    }
+
+    .win-titlebar {
+      background: var(--bg2);
+      color: var(--fg);
+      font-weight: 600;
+      cursor: move;
+      padding: 5px 6px 5px 10px;
+      border-radius: var(--radius) var(--radius) 0 0;
+      border-bottom: 1px solid var(--bg3);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      touch-action: none;
+    }
+    .win-window.maximized .win-titlebar {
+      cursor: default;
+      border-radius: 0;
+    }
+    .win-titlebar.inactive {
+      background: var(--bg1);
+      color: var(--muted);
+    }
+    .win-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow: hidden;
+      white-space: nowrap;
+      min-width: 0;
+    }
+    .win-title-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .win-title-btns {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .title-btn {
+      width: 22px;
+      height: 20px;
+      font-size: 12px;
+      line-height: 1;
+      text-align: center;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      color: var(--fg-dim);
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .title-btn:hover {
+      background: var(--bg4);
+      color: var(--fg);
+    }
+    .title-btn[data-act="close"]:hover {
+      background: var(--red);
+    }
+
+    .win-menubar {
+      padding: 3px 8px;
+      border-bottom: 1px solid var(--bg3);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+    }
+    .win-menu-item {
+      padding: 2px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      color: var(--fg-dim);
+    }
+    .win-menu-item:hover {
+      background: var(--bg3);
+      color: var(--fg);
+    }
+
+    .win-body {
+      flex: 1;
+      margin: 4px;
+      overflow: hidden;
+      position: relative;
+      min-height: 0;
+    }
+    .win-body iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
+    .win-statusbar {
+      margin: 0 4px 4px;
+      padding: 2px 8px;
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    /* Built-in windows (node, login, about) */
+    .dialog-body {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      line-height: 1.45;
+    }
+    .dialog-body label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      color: var(--fg-dim);
+    }
+    .dialog-body input, .dialog-body select {
+      padding: 5px 7px;
+      font: 12px var(--font-mono);
+      user-select: text;
+      -webkit-user-select: text;
+    }
+    .dialog-actions {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+    .dialog-actions .btn {
+      min-width: 72px;
+      justify-content: center;
+    }
+    .hint {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .error {
+      color: var(--red);
+      min-height: 15px;
+    }
+
+    /* Window drag & resize shields: iframes would otherwise swallow pointer events */
+    body.window-dragging iframe {
+      pointer-events: none !important;
+    }
+
+    /* Window Resize Handles */
+    .win-resize-handle {
+      position: absolute;
+      z-index: 25;
+      touch-action: none;
+    }
+    .win-window.maximized .win-resize-handle {
+      display: none;
+    }
+    .win-resize-n  { top: -4px; left: 8px; right: 8px; height: 8px; cursor: ns-resize; }
+    .win-resize-s  { bottom: -4px; left: 8px; right: 8px; height: 8px; cursor: ns-resize; }
+    .win-resize-e  { right: -4px; top: 8px; bottom: 8px; width: 8px; cursor: ew-resize; }
+    .win-resize-w  { left: -4px; top: 8px; bottom: 8px; width: 8px; cursor: ew-resize; }
+    .win-resize-nw { top: -4px; left: -4px; width: 14px; height: 14px; cursor: nwse-resize; z-index: 26; }
+    .win-resize-ne { top: -4px; right: -4px; width: 14px; height: 14px; cursor: nesw-resize; z-index: 26; }
+    .win-resize-sw { bottom: -4px; left: -4px; width: 14px; height: 14px; cursor: nesw-resize; z-index: 26; }
+    .win-resize-se { bottom: -4px; right: -4px; width: 14px; height: 14px; cursor: nwse-resize; z-index: 26; }
+
+    /* Icons run top-to-bottom down the left edge, wrapping to a new column only
+       when the screen is too short. The container is sized to the icons and lets
+       clicks through, so it never blocks windows or the desktop panel. */
+    .desktop-grid {
+      padding: 16px;
+      display: grid;
+      grid-auto-flow: column;
+      grid-template-rows: repeat(auto-fill, 80px);
+      grid-auto-columns: 92px;
+      gap: 10px 8px;
+      width: max-content;
+      height: calc(100vh - var(--taskbar-h));
+      position: relative;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .desktop-icon {
+      pointer-events: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 6px 4px;
+      text-align: center;
+      cursor: pointer;
+      border-radius: 6px;
+      outline: none;
+    }
+    .desktop-icon:hover {
+      background-color: rgba(236, 239, 244, 0.08);
+    }
+    .desktop-icon:focus-visible,
+    .desktop-icon.selected {
+      background-color: rgba(136, 192, 208, 0.22);
+    }
+    .desktop-icon-label {
+      color: var(--fg);
+      font-size: 12px;
+      margin-top: 4px;
+      padding: 1px 3px;
+      line-height: 1.2;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    }
+
+    /* Desktop panel */
+    #brand-widget {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 15;
+      width: 250px;
+      overflow: hidden;
+    }
+    #brand-widget .win-titlebar {
+      cursor: default;
+    }
+    .brand-body {
+      padding: 14px 12px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand-name {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+    .brand-name span:not(.exec-pill) {
+      color: var(--accent);
+    }
+    .brand-meta {
+      font-size: 12px;
+      color: var(--fg-dim);
+      text-align: center;
+      border-top: 1px solid var(--bg3);
+      padding-top: 8px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: calc(var(--taskbar-h) + 10px);
+      right: 12px;
+      background: var(--bg2);
+      border-left: 3px solid var(--accent);
+      border-radius: 6px;
+      box-shadow: var(--shadow);
+      z-index: 10000;
+      padding: 8px 12px;
+      min-width: 220px;
+      max-width: 360px;
+    }
+
+    /* Taskbar */
+    .taskbar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: var(--taskbar-h);
+      background: rgba(36, 41, 51, 0.92);
+      backdrop-filter: blur(8px);
+      border-top: 1px solid var(--bg3);
+      z-index: 5000;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 4px 6px;
+    }
+    .taskbar .btn {
+      height: 100%;
+    }
+    .taskbar-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: 100%;
+      min-width: 0;
+      flex: 1;
+    }
+    .taskbar-items-container {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      height: 100%;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .taskbar-window-btn {
+      max-width: 170px;
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      justify-content: flex-start;
+      background: transparent;
+      border-color: transparent;
+    }
+    .taskbar-window-btn span:last-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #menu-btn {
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .logo {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+    .taskbar-tray {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 10px;
+      border-radius: 5px;
+      background: var(--bg1);
+      flex-shrink: 0;
+      font-size: 12px;
+    }
+    #tray-node {
+      cursor: pointer;
+    }
+
+    /* App menu */
+    .start-menu {
+      position: absolute;
+      bottom: calc(var(--taskbar-h) + 6px);
+      left: 6px;
+      width: 270px;
+      max-height: calc(100vh - var(--taskbar-h) - 12px);
+      overflow-y: auto;
+      padding: 6px;
+      z-index: 6000;
+      display: none;
+    }
+    .start-menu.open {
+      display: block;
+    }
+    .start-menu-identity {
+      padding: 8px 10px;
+      margin-bottom: 4px;
+      font-weight: 600;
+      border-radius: 6px;
+      background: var(--bg2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .start-menu-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .start-menu-icon {
+      flex: none;
+      width: 20px;
+      text-align: center;
+    }
+    .start-menu-row:hover {
+      background: var(--accent-3);
+    }
+    .start-menu-wallpaper select {
+      margin-left: auto;
+      max-width: 130px;
+      padding: 2px 4px;
+      font: inherit;
+    }
+    .start-menu-heading {
+      padding: 4px 10px 2px;
+      font-size: 10px;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .start-menu-sep {
+      height: 1px;
+      background: var(--bg3);
+      margin: 5px 4px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 640px) {
+      #brand-widget {
+        display: none !important;
+      }
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+      .taskbar { background: var(--bg0); backdrop-filter: none; }
+    }
+
+    /* =========================================================================
+       Retro MacOS Login Gate & Executive Styling
+       ========================================================================= */
+    .mac-login-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      background:
+        radial-gradient(ellipse at 50% 50%, rgba(36, 41, 51, 0.90), rgba(15, 18, 23, 0.97)),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='2' height='2' fill='%23000' fill-opacity='0.25'/%3E%3C/svg%3E");
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      backdrop-filter: blur(5px);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .mac-login-overlay.hidden {
+      display: none !important;
+    }
+
+    .mac-dialog {
+      width: 440px;
+      max-width: 95vw;
+      background: #c8ced6;
+      color: #1a1e24;
+      border: 2px solid #000;
+      border-radius: 6px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65), inset 1px 1px 0 #fff, inset -1px -1px 0 #888;
+      font-family: var(--font-ui);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .mac-titlebar {
+      height: 22px;
+      background: repeating-linear-gradient(
+        to bottom,
+        #000 0px,
+        #000 1px,
+        #c8ced6 1px,
+        #c8ced6 3px
+      );
+      border-bottom: 2px solid #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 0 10px;
+    }
+
+    .mac-title-plate {
+      background: #c8ced6;
+      padding: 0 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #000;
+      border-left: 2px solid #000;
+      border-right: 2px solid #000;
+      text-transform: uppercase;
+    }
+
+    .mac-dialog-body {
+      padding: 16px 18px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .mac-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid #9aa3b5;
+      padding-bottom: 10px;
+    }
+
+    .mac-banner-logo {
+      width: 40px;
+      height: 40px;
+      flex-shrink: 0;
+    }
+
+    .mac-banner-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #111;
+      line-height: 1.2;
+    }
+
+    .mac-banner-sub {
+      font-size: 11px;
+      color: #4c566a;
+      margin-top: 2px;
+    }
+
+    .mac-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .mac-row {
+      display: grid;
+      grid-template-columns: 85px 1fr;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .mac-input, .mac-select {
+      background: #fff;
+      color: #000;
+      border: 1px solid #4c566a;
+      border-top-color: #242933;
+      border-left-color: #242933;
+      box-shadow: inset 1px 1px 2px rgba(0,0,0,0.25);
+      border-radius: 2px;
+      padding: 4px 6px;
+      font: 12px var(--font-mono);
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .mac-input:focus, .mac-select:focus {
+      outline: 2px solid #88c0d0;
+      outline-offset: 0;
+    }
+
+    .mac-error {
+      min-height: 16px;
+      font-size: 11px;
+      color: #bf616a;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .mac-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 4px;
+      padding-top: 8px;
+      border-top: 1px solid #9aa3b5;
+    }
+
+    .mac-btn {
+      background: linear-gradient(180deg, #f5f6f8 0%, #d8dee9 100%);
+      color: #111;
+      border: 1px solid #000;
+      border-radius: 4px;
+      padding: 4px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: inset 1px 1px 0 #fff, 0 1px 2px rgba(0,0,0,0.2);
+    }
+    .mac-btn:hover {
+      background: #eceff4;
+    }
+    .mac-btn:active {
+      background: #c8ced6;
+      box-shadow: inset 1px 1px 2px rgba(0,0,0,0.4);
+    }
+
+    /* Classic Mac default return-key button ring */
+    .mac-btn-default-wrap {
+      display: inline-flex;
+      padding: 2px;
+      border: 2px solid #000;
+      border-radius: 7px;
+      background: transparent;
+    }
+    .mac-btn-default-wrap .mac-btn {
+      background: linear-gradient(180deg, #fff 0%, #d8dee9 100%);
+      border-color: #000;
+    }
+
+    /* Executive Mode Theme Accents */
+    body.executive-mode .brand-name span:not(.exec-pill) {
+      color: #ebcb8b; /* Gold accent */
+    }
+    body.executive-mode #brand-widget {
+      border-color: #ebcb8b;
+    }
+    .exec-pill {
+      display: inline-block;
+      background: #ebcb8b;
+      color: #111;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      margin-left: 6px;
+      vertical-align: middle;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Project emblem (original artwork), used by <svg class="logo"><use href="#logo"/></svg> -->
+  <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
+    <!-- BitShares B-wheel, used on the taskbar Apps button and the desktop panel -->
+    <symbol id="bwheel" viewBox="0 0 27.20632 27.20632">
+      <g transform="translate(-4.0927923,-270.09372)">
+        <path d="m 15.879654,296.9134 c -0.52163,-0.15011 -1.441405,-0.58414 -2.043942,-0.9645 -1.057875,-0.66781 -1.077605,-0.70847 -0.574139,-1.18329 0.28676,-0.27045 1.160642,-1.10802 1.941959,-1.86127 1.106393,-1.06665 1.552364,-1.32772 2.016448,-1.18042 0.550865,0.17483 0.59587,0.39018 0.59587,2.85121 0,2.94348 0.03213,2.90468 -1.936196,2.33827 z m 3.065085,-2.30686 c 0,-2.49545 0.04394,-2.70745 0.5976,-2.88317 0.477937,-0.15169 0.958291,0.16781 2.398889,1.59561 0.990709,0.9819 1.801288,1.86401 1.801288,1.96024 0,0.32337 -2.670561,1.62643 -3.739444,1.8246 l -1.058333,0.19622 z m -7.743862,-1.11338 c -0.482995,-0.73714 -1.287251,-2.91645 -1.287251,-3.48809 0,-0.30145 0.590481,-0.38785 2.650917,-0.38785 3.516407,0 3.655591,0.3046 1.248825,2.73295 -0.971724,0.98043 -1.86276,1.78261 -1.980083,1.78261 -0.117322,0 -0.401906,-0.28783 -0.632408,-0.63962 z m 11.649526,-1.26538 c -1.025614,-1.04775 -1.805375,-2.06375 -1.732801,-2.25778 0.0934,-0.2497 0.95129,-0.35278 2.936032,-0.35278 h 2.804079 l -0.173135,0.77612 c -0.226788,1.01661 -1.51628,3.73944 -1.770943,3.73944 -0.109164,0 -1.037618,-0.85725 -2.063232,-1.905 z M 9.913626,284.75061 v -3.4555 l 2.816428,2.8205 c 2.325948,2.32931 2.787132,2.93109 2.648197,3.4555 -0.159345,0.60145 -0.308147,0.635 -2.816429,0.635 H 9.913626 Z m 11.310799,2.932 c -0.233935,-0.43712 0.02862,-0.8308 1.590954,-2.38547 1.029119,-1.02408 1.978043,-1.79589 2.10872,-1.71513 0.421096,0.26026 1.445915,2.47569 1.649456,3.56577 l 0.197615,1.05833 h -2.633286 c -2.275806,0 -2.671321,-0.0711 -2.913459,-0.5235 z m -8.161273,-4.983 -3.149526,-3.27618 v -4.66485 -4.66486 l 0.917222,0.77072 c 0.504473,0.42389 2.221999,1.92076 3.816725,3.32638 l 2.899503,2.55566 -0.07728,4.53037 c -0.100896,5.91485 -0.0912,5.91172 -4.406644,1.42276 z m 6.069735,3.06058 c -0.103481,-0.10348 -0.188148,-1.38357 -0.188148,-2.84465 v -2.6565 l 0.917222,0.19798 c 0.939052,0.20269 2.884252,1.09301 3.543225,1.62173 0.286556,0.22992 -0.02461,0.69181 -1.402958,2.08252 -1.639187,1.65389 -2.393845,2.07441 -2.869341,1.59892 z" fill="#00A4E4"/>
+      </g>
+    </symbol>
+    <symbol id="logo" viewBox="0 0 32 32">
+      <path d="M16 2l12 7v14l-12 7-12-7V9z" fill="#2e3440" stroke="#88c0d0" stroke-width="2"/>
+      <path d="M10 20l6-9 6 9z" fill="none" stroke="#eceff4" stroke-width="1.6" stroke-linejoin="round"/>
+      <circle cx="16" cy="11" r="2.4" fill="#88c0d0"/>
+      <circle cx="10" cy="20" r="2.4" fill="#a3be8c"/>
+      <circle cx="22" cy="20" r="2.4" fill="#ebcb8b"/>
+    </symbol>
+  </svg>
+
+  <!-- Retro MacOS Login Gate (Locked State) -->
+  <div id="mac-login-overlay" class="mac-login-overlay hidden">
+    <div class="mac-dialog" role="dialog" aria-modal="true" aria-labelledby="mac-dialog-title">
+      <div class="mac-titlebar">
+        <span class="mac-title-plate" id="mac-dialog-title">Welcome to DaoStreet OS</span>
+      </div>
+      <div class="mac-dialog-body">
+        <div class="mac-banner">
+          <svg class="mac-banner-logo" viewBox="0 0 32 32">
+            <use href="#logo"/>
+          </svg>
+          <div>
+            <div class="mac-banner-title">DaoStreet Workstation</div>
+            <div class="mac-banner-sub">Log in with your BitShares account or proceed as Guest.</div>
+          </div>
+        </div>
+
+        <form id="mac-login-form" class="mac-form">
+          <label class="mac-row">
+            <span>Name:</span>
+            <input id="mac-login-account" class="mac-input" type="text" autocomplete="username" spellcheck="false" placeholder="Account name or 'guest'">
+          </label>
+          <label class="mac-row">
+            <span>Password:</span>
+            <input id="mac-login-password" class="mac-input" type="password" autocomplete="current-password" placeholder="Only for Executive access" title="Leave blank for the public desktop. With the access password and 1,000,000+ liquid BTS on the account, opens the Executive desktop.">
+          </label>
+          <label class="mac-row">
+            <span>Wallet:</span>
+            <select id="mac-login-scheme" class="mac-select">
+              <option value="rawbeetvault">BeetVault (rawbeetvault://) - default</option>
+              <option value="rawbeeteos">BeetEOS (rawbeeteos://)</option>
+              <option value="rawbeet">Beet Classic (rawbeet://)</option>
+            </select>
+          </label>
+
+          <div id="mac-login-error" class="mac-error"></div>
+
+          <div class="mac-actions">
+            <button type="button" class="mac-btn" id="btn-mac-guest" title="Unlock Public Desktop without an account">Guest</button>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <div class="mac-btn-default-wrap">
+                <button type="submit" class="mac-btn" id="btn-mac-submit">Log In</button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Desktop panel -->
+  <div id="brand-widget" class="panel">
+    <div class="win-titlebar">
+      <span class="desktop-name"></span>
+      <button class="title-btn" id="btn-close-brand" title="Hide (app menu &gt; Show Desktop Panel brings it back)" aria-label="Hide panel">–</button>
+    </div>
+    <div class="brand-body">
+      <img class="brand-logo" src="daostreet-logo.webp" alt="daostreet" style="width: 170px; height: auto; max-height: 40px; object-fit: contain;">
+      <div class="brand-name"><span>Workstation</span></div>
+      <div class="brand-meta">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 26px;">
+          <span>Account: <strong id="brand-account">Not logged in</strong></span>
+          <button class="btn" id="btn-login" style="font-size: 11px; padding: 2px 8px;">Login</button>
+        </div>
+        <div id="brand-node" class="hint">Node: connecting...</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Desktop icons: built from APPS -->
+  <div class="desktop-grid" id="desktop-icons"></div>
+
+  <!-- Built-in window bodies: cloned into a window when opened -->
+  <template id="tpl-node">
+    <div class="dialog-body">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 26px;">🌐</span>
+        <div style="min-width: 0;">
+          <div><strong>BitShares node:</strong> <span class="mono" style="word-break: break-all;" id="node-url">-</span></div>
+          <div style="font-weight: 600;" id="node-status">Status: Connecting...</div>
+        </div>
+      </div>
+      <div class="well mono" style="padding: 8px; font-size: 11px; line-height: 1.5; user-select: text; -webkit-user-select: text;" id="node-detail"></div>
+      <div class="hint">Apps on this desktop share this connection for read-only lookups.</div>
+      <div class="dialog-actions">
+        <button class="btn" id="btn-reconnect-node">Reconnect</button>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-about">
+    <div class="dialog-body">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <img class="brand-logo" src="daostreet-logo.webp" alt="daostreet" style="width: 120px; height: auto; max-height: 28px; object-fit: contain;">
+        <div class="brand-name"><span>Workstation</span>
+          <span class="hint" style="font-weight: normal;" id="about-version"></span></div>
+      </div>
+      <div>A desktop for BitShares DEX tools. Each app runs in its own window and shares the desktop's node connection and account.</div>
+      <div>Transactions are never signed here: apps prepare them, and you review and sign in BeetVault.</div>
+      <div class="well hint" style="padding: 8px;" id="about-server"></div>
+      <div class="dialog-actions">
+        <button class="btn" id="btn-about-ok">OK</button>
+      </div>
+    </div>
+  </template>
+
+  <!-- App menu: rows built from APPS -->
+  <div id="start-menu" class="start-menu panel">
+    <div class="start-menu-identity">
+      <span>👤</span>
+      <span id="start-identity">Not logged in</span>
+    </div>
+    <div id="start-menu-items"></div>
+  </div>
+
+  <!-- Taskbar -->
+  <div class="taskbar">
+    <div class="taskbar-left">
+      <button id="menu-btn" class="btn" aria-haspopup="menu" aria-controls="start-menu">
+        <svg class="logo"><use href="#bwheel"/></svg>
+        <span>Apps</span>
+      </button>
+      <div class="taskbar-items-container" id="taskbar-items"></div>
+    </div>
+    <div class="taskbar-tray">
+      <span title="BitShares node: connecting" id="tray-node">⚪ Node</span>
+      <span id="clock" class="mono">--:--</span>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite">
+    <div id="toast-title" style="font-weight: 600; margin-bottom: 2px;"></div>
+    <div id="toast-msg" class="hint" style="color: var(--fg-dim);"></div>
+  </div>
+
+  <script src="shared/b95-bridge.js"></script>
+  <script>
+    const DESKTOP_NAME = 'DaoStreet Workstation';
+    const DESKTOP_VERSION = '1.1';
+
+    // =========================================================================
+    // APPS: every desktop icon, start menu entry and window comes from here.
+    //
+    // To add a standalone HTML app, add one entry:
+    //   { id: 'myapp', title: 'My App', emoji: '🚀', icon: ICONS.generic,
+    //     src: 'my-app/index.html', size: [880, 580] }
+    //
+    // Fields:
+    //   id          unique key (window id is "win-<id>")
+    //   title       icon label, start menu and taskbar text
+    //   windowTitle title bar text (defaults to title)
+    //   emoji       small icon for title bar, taskbar and start menu
+    //   icon        32x32 SVG markup for the desktop icon
+    //   src         HTML app loaded in a window (iframe)
+    //   url         external link opened in a new browser tab instead
+    //   template    id of a <template> for built-in windows
+    //   size        [width, height] default window size; height 'auto' fits content
+    //   resizable   default true; false also hides maximize
+    //   dialog      only a close button, never in the taskbar
+    //   desktop     false hides the desktop icon
+    //   menu        start menu group: 'pools' | 'credit' | 'builders' | 'portfolio' | 'games' | 'links' | 'system' | false
+    //   status      [left, right] status bar text for src apps
+    //   server      true: needs server.py (shown only when its API answers, so a
+    //               public copy on a plain web host leaves it out)
+    //   public      true: include this src app in the public copy (build_public.py
+    //               drops every other src app's entry, icon and folder there)
+    //
+    // Apps can include shared/b95-bridge.js to read the logged-in account,
+    // use the desktop's node connection and raise notifications.
+    // =========================================================================
+    const ICONS = {
+      microdex: `<svg width="34" height="34" viewBox="0 0 32 32" fill="none">
+        <rect x="2" y="3" width="28" height="22" rx="2" fill="#202020" stroke="#000" stroke-width="1.5"/>
+        <rect x="4" y="5" width="24" height="18" fill="#050505"/>
+        <polyline points="6,18 12,12 18,15 26,7" fill="none" stroke="#00FF88" stroke-width="2"/>
+        <rect x="6" y="8" width="4" height="3" fill="#00E5FF"/>
+        <path d="M12 25h8v3h-8z" fill="#808080"/>
+        <line x1="8" y1="28" x2="24" y2="28" stroke="#000" stroke-width="2"/></svg>`,
+      pools: `<svg width="34" height="34" viewBox="0 0 32 32" fill="none">
+        <rect x="3" y="4" width="26" height="24" rx="2" fill="#1E293B" stroke="#000" stroke-width="1.5"/>
+        <circle cx="16" cy="15" r="9" fill="#00A4E4" stroke="#FFF" stroke-width="1"/>
+        <path d="M9 16c2-3 4 3 7 0s5 3 7 0" stroke="#FFF" stroke-width="1.5" fill="none"/>
+        <rect x="6" y="21" width="5" height="5" fill="#38BDF8"/>
+        <rect x="13" y="19" width="5" height="7" fill="#60A5FA"/>
+        <rect x="20" y="17" width="5" height="9" fill="#22C55E"/></svg>`,
+      node: `<svg width="34" height="34" viewBox="0 0 32 32" fill="none">
+        <rect x="3" y="5" width="26" height="18" rx="1" fill="#C0C0C0" stroke="#000" stroke-width="1.5"/>
+        <rect x="6" y="8" width="20" height="12" fill="#000"/>
+        <path d="M13 23h6v4h-6z" fill="#808080"/>
+        <line x1="9" y1="27" x2="23" y2="27" stroke="#000" stroke-width="2"/>
+        <path d="M10 14l6-4v3h4v2h-4v3l-6-4z" fill="#00FF00"/></svg>`,
+      creditflow: `<svg width="34" height="34" viewBox="0 0 32 32" fill="none">
+        <rect x="2" y="2" width="28" height="28" rx="2" fill="#0F172A" stroke="#000" stroke-width="1.5"/>
+        <polygon points="16,6 5,12 27,12" fill="#E2E8F0" stroke="#000" stroke-width="1"/>
+        <rect x="7" y="13" width="3" height="9" fill="#94A3B8" stroke="#000" stroke-width="0.75"/>
+        <rect x="12" y="13" width="3" height="9" fill="#94A3B8" stroke="#000" stroke-width="0.75"/>
+        <rect x="17" y="13" width="3" height="9" fill="#94A3B8" stroke="#000" stroke-width="0.75"/>
+        <rect x="22" y="13" width="3" height="9" fill="#94A3B8" stroke="#000" stroke-width="0.75"/>
+        <rect x="4" y="22" width="24" height="3" fill="#E2E8F0" stroke="#000" stroke-width="1"/>
+        <circle cx="16" cy="9.5" r="1.5" fill="#38BDF8"/>
+      </svg>`,
+      clilite: `<svg width="34" height="34" viewBox="0 0 32 32" fill="none">
+        <rect x="2" y="3" width="28" height="26" rx="2" fill="#111827" stroke="#000" stroke-width="1.5"/>
+        <rect x="2" y="3" width="28" height="5" fill="#F59E0B"/>
+        <text x="6" y="7.3" font-size="4.5" font-family="sans-serif" font-weight="bold" fill="#111827">₿</text>
+        <rect x="5" y="11" width="22" height="3" fill="#1E293B"/>
+        <rect x="5" y="16" width="22" height="3" fill="#1E293B"/>
+        <rect x="5" y="21" width="22" height="3" fill="#1E293B"/>
+        <rect x="5" y="11" width="14" height="3" fill="#34D399"/>
+        <rect x="5" y="16" width="9" height="3" fill="#38BDF8"/>
+        <rect x="5" y="21" width="5" height="3" fill="#FBBF24"/>
+      </svg>`,
+      lprouter: `<svg width="34" height="34" viewBox="0 0 32 32" fill="none">
+        <rect x="2" y="2" width="28" height="28" rx="2" fill="#0A1628" stroke="#000" stroke-width="1.5"/>
+        <circle cx="8" cy="12" r="4.5" fill="#0055AA" stroke="#00E5FF" stroke-width="1"/>
+        <circle cx="24" cy="20" r="4.5" fill="#007A44" stroke="#00FF88" stroke-width="1"/>
+        <circle cx="16" cy="16" r="3.5" fill="#995500" stroke="#FFB300" stroke-width="1"/>
+        <path d="M12 14l2.5 1.5M18 17.5l3.5 2" stroke="#00E5FF" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M21 19.5l-2 -3" stroke="#00FF88" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>`,
+      gateway: `<svg width="34" height="34" viewBox="0 0 32 32" fill="none">
+        <rect x="2" y="2" width="28" height="28" rx="2" fill="#0B1320" stroke="#000" stroke-width="1.5"/>
+        <path d="M5 26V13a11 9 0 0 1 22 0v13" fill="none" stroke="#94A3B8" stroke-width="2.5"/>
+        <rect x="4" y="25" width="24" height="3" fill="#475569"/>
+        <circle cx="11" cy="17" r="3.5" fill="#23292F" stroke="#00E5FF" stroke-width="1"/>
+        <circle cx="21" cy="17" r="3.5" fill="#1E1E3F" stroke="#FACC15" stroke-width="1"/>
+        <path d="M14.5 17h3" stroke="#00FF88" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M16 21v3M14.5 22.5l1.5 1.5 1.5-1.5" stroke="#00FF88" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+      </svg>`,
+      iobpps: `<svg width="34" height="34" viewBox="0 0 32 32" fill="none">
+        <rect x="2" y="2" width="28" height="28" rx="2" fill="#0C1424" stroke="#000" stroke-width="1.5"/>
+        <polyline points="5,22 12,16 18,19 27,9" fill="none" stroke="#34D399" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="27" cy="9" r="2" fill="#60A5FA"/>
+        <circle cx="12" cy="16" r="1.5" fill="#88C0D0"/>
+        <path d="M5 26h22" stroke="#1E2D45" stroke-width="1.5" stroke-linecap="round"/>
+        <text x="7" y="12" font-size="5" font-family="monospace" font-weight="bold" fill="#88C0D0">PPS</text>
+      </svg>`,
+      generic: `<svg width="34" height="34" viewBox="0 0 32 32" fill="none">
+        <rect x="4" y="4" width="24" height="24" rx="4" fill="#3b4252" stroke="#000" stroke-width="1.5"/>
+        <circle cx="16" cy="16" r="6" fill="#00FF88"/></svg>`,
+      gatewayboard: `<svg width="34" height="34" viewBox="0 0 32 32" fill="none">
+        <rect x="2" y="2" width="28" height="28" rx="2" fill="#07080B" stroke="#000" stroke-width="1.5"/>
+        <rect x="4" y="4" width="24" height="24" fill="#0D0F14" stroke="#1F2533" stroke-width="0.75"/>
+        <path d="M7 16h4l2-3 2 6 2-6 2 6 2-3h4" stroke="#475569" stroke-width="0.8" stroke-dasharray="1 1"/>
+        <circle cx="8" cy="16" r="3.5" fill="#181D28" stroke="#E2E8F0" stroke-width="0.8"/>
+        <text x="8" y="18.5" font-size="5" text-anchor="middle" font-family="sans-serif" font-weight="bold" fill="#FFF">₿</text>
+        <circle cx="13.5" cy="16" r="1.5" fill="#000" stroke="#64748B" stroke-width="0.6"/>
+        <circle cx="18.5" cy="16" r="1.5" fill="#000" stroke="#64748B" stroke-width="0.6"/>
+        <circle cx="24" cy="16" r="3.5" fill="#181D28" stroke="#E2E8F0" stroke-width="0.8"/>
+        <text x="24" y="18" font-size="4" text-anchor="middle" font-family="sans-serif" font-weight="bold" fill="#FFF">Au</text>
+        <path d="M7 24h18m-4-2l3 2-3 2" stroke="#FFF" stroke-width="1" fill="none" stroke-linecap="round"/>
+      </svg>`,
+      transfer: `<svg width="34" height="34" viewBox="0 0 32 32" fill="none">
+        <rect x="2" y="2" width="28" height="28" rx="2" fill="#0C1424" stroke="#000" stroke-width="1.5"/>
+        <rect x="4" y="4" width="24" height="24" rx="1.5" fill="#111827" stroke="#1E2D45" stroke-width="0.75"/>
+        <circle cx="9" cy="11" r="3.5" fill="#2B4C7E" stroke="#88C0D0" stroke-width="0.8"/>
+        <path d="M14 11h11m-3-3l3 3-3 3" stroke="#88C0D0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="23" cy="21" r="3.5" fill="#0D9488" stroke="#34D399" stroke-width="0.8"/>
+        <path d="M18 21H7m3-3l-3 3 3 3" stroke="#34D399" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
+    };
+
+    const APPS = [
+      { id: 'microdex', title: 'microDEX', windowTitle: 'microDEX v1.1.0 - Retro BitShares DEX Terminal', emoji: '📊',
+        icon: ICONS.microdex, src: 'microdex-retro/index.html', size: [880, 580], menu: 'pools',
+        status: ['microdex-retro/index.html', 'Retro DEX Terminal'], public: true },
+      { id: 'pools', title: 'Pools Tracker', windowTitle: 'BitShares Pools TVL & Beet Tracker', emoji: '🌊',
+        icon: ICONS.pools, src: 'beet-pools-tracker/index.html', size: [880, 580], menu: 'pools',
+        status: ['beet-pools-tracker/index.html', 'Liquidity Pool TVL & Swaps'], public: true },
+      { id: 'creditflow', title: 'CreditFlow', windowTitle: 'DaoStreet CreditFlow - Global TVL & Collateral Tracker', emoji: '🏦',
+        icon: ICONS.creditflow, src: 'bitshares-creditflow/index.html', size: [960, 620], menu: 'credit',
+        status: ['bitshares-creditflow/index.html', 'Credit Offers & Collateral'], public: true },
+      { id: 'clilite', title: 'Pool Stats Lite', windowTitle: 'Pool Stats Lite - BTC Depth & LP Valuation', emoji: '📋',
+        icon: ICONS.clilite, src: 'cli-lite/index.html', size: [960, 620], menu: 'pools',
+        status: ['cli-lite/index.html', 'BTC Pool Depth · BTC Compare · Swap & Deposit Tx'], public: true },
+      { id: 'gatewayboard', title: 'Gateway Board', windowTitle: 'Gateway Board - Pool Price Boards & Swap Terminal', emoji: '⚡',
+        icon: ICONS.gatewayboard, src: 'gateway-board/index.html', size: [1000, 680], menu: 'pools',
+        status: ['gateway-board/index.html', 'XRP·USDT · XRP·BTC · BTC·XAUT Boards & Swap Terminal'], public: true },
+      { id: 'lprouter', title: 'LP Router', windowTitle: 'LP Compound Router - Multi-Hop Swap Terminal', emoji: '🔀',
+        icon: ICONS.lprouter, src: 'lp-router/index.html', size: [980, 640], menu: 'pools',
+        status: ['lp-router/index.html', 'Compound AMM Swaps across Hubs'], public: true },
+      { id: 'gateway', title: 'ioBanker Gateway', windowTitle: 'ioBanker Gateway - XRP & XLM Deposit Bridge', emoji: '🌉',
+        icon: ICONS.gateway, src: 'gateway/index.html', size: [880, 640], menu: 'portfolio',
+        status: ['gateway/index.html', 'IOB.XRP · IOB.XLM Deposit Tags'], public: true },
+      { id: 'iobpps', title: 'ioBanker LP PPS', windowTitle: 'ioBanker LP PPS & Annualized Yield - BTS/IOB.XRP & BTS/IOB.XLM', emoji: '📈',
+        icon: ICONS.iobpps, src: 'gateway/pps.html', size: [960, 660], menu: 'pools',
+        status: ['gateway/pps.html', 'ioBanker LP Price Per Share & Annualized Yield'], public: true },
+      { id: 'transfer', title: 'Transfer', windowTitle: 'Transfer - BitShares Asset Transfer (Op 0)', emoji: '⇄',
+        icon: ICONS.transfer, src: 'asset-transfer/index.html', size: [680, 640], menu: 'portfolio',
+        status: ['asset-transfer/index.html', 'BitShares Asset Transfer · Op 0 · BeetVault'], public: true },
+      { id: 'node', title: 'Node Status', windowTitle: 'BitShares Node Connectivity', emoji: '🔄',
+        icon: ICONS.node, template: 'tpl-node', size: [380, 'auto'], resizable: false, menu: 'system',
+        onCreate: () => { document.getElementById('btn-reconnect-node').addEventListener('click', connectNode); renderNodeStatus(); } },
+      { id: 'about', title: `About ${DESKTOP_NAME}`, windowTitle: `About ${DESKTOP_NAME}`, emoji: 'ℹ️',
+        template: 'tpl-about', size: [340, 'auto'], resizable: false, dialog: true, desktop: false, menu: false,
+        onCreate: setupAbout },
+    ];
+    const APP_BY_ID = Object.fromEntries(APPS.map(a => [a.id, a]));
+
+    // =========================================================================
+    // Whitelist & Desktop Tiers (Public vs. Executive)
+    // =========================================================================
+    // Account names that get the Executive desktop. The public copy has none: build_public.py cuts the
+    // names and refuses to build if any are left.
+    const EXECUTIVE_WHITELIST = new Set([
+    ]);
+    const SYSTEM_IDS = new Set(['node', 'about']);
+    const UNLOCKED_KEY = 'b95-unlocked';
+
+    // Fallback storage in window.name for static file:/// mode where Chromium blocks localStorage
+    const WIN_NAME_PREFIX = 'b95:';
+    function winStoreReadAll() {
+      try {
+        if (typeof window.name === 'string' && window.name.startsWith(WIN_NAME_PREFIX)) {
+          return JSON.parse(window.name.slice(WIN_NAME_PREFIX.length)) || {};
+        }
+      } catch (_) {}
+      return {};
+    }
+    function winStoreGet(key) {
+      const all = winStoreReadAll();
+      return key in all ? all[key] : null;
+    }
+    function winStoreSet(key, val) {
+      try {
+        const all = winStoreReadAll();
+        if (val === null || val === undefined) delete all[key];
+        else all[key] = val;
+        window.name = WIN_NAME_PREFIX + JSON.stringify(all);
+      } catch (_) {}
+    }
+
+    // =========================================================================
+    // Token gate: the second way into the Executive tier, for accounts not on the whitelist.
+    // Needs the access password plus 1,000,000 liquid BTS on the account typed in. Nothing is
+    // signed, so anyone with the password and a big holder's name gets in: this filters the
+    // desktop, it does not secure it. checkTokenGate() is the one place to swap in a signed
+    // Beet challenge later.
+    // =========================================================================
+    const TOKEN_GATE = {
+      assetId: '1.3.0',               // BTS
+      precision: 5,                   // 1 BTS = 100,000 base units
+      minBase: 100_000_000_000n,      // 1,000,000 BTS
+      passwordSha256: '',             // empty turns the gate off; the public copy always ships it empty
+    };
+    const tokenGateOn = () => /^[0-9a-f]{64}$/.test(TOKEN_GATE.passwordSha256);
+
+    const isWhitelisted = (name) => EXECUTIVE_WHITELIST.has(String(name || '').trim().toLowerCase());
+
+    // A token-gated session stores the password hash it passed with, so changing the password ends it
+    const hasTokenGate = (account) => Boolean(tokenGateOn() && account && account.tokenGate === TOKEN_GATE.passwordSha256);
+
+    function isExecutive() {
+      return Boolean(currentAccount && (isWhitelisted(currentAccount.name) || hasTokenGate(currentAccount)));
+    }
+
+    async function sha256Hex(text) {
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+      return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // Liquid balance only: BTS in orders, pools, collateral, credit offers or vesting is not counted
+    async function liquidGateBalance(accountId) {
+      const balances = await rpc('get_account_balances', [accountId, [TOKEN_GATE.assetId]]);
+      const entry = Array.isArray(balances) ? balances.find(b => b.asset_id === TOKEN_GATE.assetId) : null;
+      return BigInt(entry?.amount ?? 0);
+    }
+
+    const formatBts = (raw) => (Number(raw) / 10 ** TOKEN_GATE.precision).toLocaleString(undefined, { maximumFractionDigits: 0 });
+
+    // { ok: true } or { ok: false, reason }
+    async function checkTokenGate(account, password) {
+      if (!tokenGateOn()) return { ok: false, reason: 'Executive access by password is not set up on this desktop.' };
+      if (!globalThis.crypto?.subtle) {
+        return { ok: false, reason: 'This browser cannot check the password here (it needs https or localhost).' };
+      }
+      if (await sha256Hex(password) !== TOKEN_GATE.passwordSha256) return { ok: false, reason: 'Wrong password.' };
+      const raw = await liquidGateBalance(account.id);
+      if (raw < TOKEN_GATE.minBase) {
+        return {
+          ok: false,
+          reason: `Executive access needs 1,000,000 liquid BTS; ${account.name} holds ${formatBts(raw)}. BTS in orders, pools or collateral does not count.`,
+        };
+      }
+      return { ok: true };
+    }
+
+    function isSessionUnlocked() {
+      try {
+        if (sessionStorage.getItem(UNLOCKED_KEY) === '1' || localStorage.getItem(UNLOCKED_KEY) === '1') return true;
+      } catch (_) {}
+      return winStoreGet(UNLOCKED_KEY) === '1';
+    }
+
+    function setSessionUnlocked(unlocked) {
+      winStoreSet(UNLOCKED_KEY, unlocked ? '1' : null);
+      try {
+        if (unlocked) {
+          sessionStorage.setItem(UNLOCKED_KEY, '1');
+          localStorage.setItem(UNLOCKED_KEY, '1');
+        } else {
+          sessionStorage.removeItem(UNLOCKED_KEY);
+          localStorage.removeItem(UNLOCKED_KEY);
+        }
+      } catch (_) {}
+    }
+
+    // server.py's health answer, or null: opened as a file, or served by a plain web host
+    let serverHealth = null;
+    const serverCheck = location.protocol === 'file:'
+      ? Promise.resolve(null)
+      : fetch('api/health', { headers: { 'X-B95': '1' } })
+          .then(r => (r.ok ? r.json() : null))
+          .then(h => (h && h.ok ? h : null))
+          .catch(() => null);
+
+    const appAvailable = (app) => {
+      if (app.server && !serverHealth) return false;
+      if (app.public || SYSTEM_IDS.has(app.id)) return true;
+      return isExecutive();
+    };
+
+    // =========================================================================
+    // Window manager
+    // =========================================================================
+    const WINDOW_Z_BASE = 100;           // windows stack at 100..100+n, always under the taskbar (5000)
+    const LAYOUT_KEY = 'b95-layout';     // per-app window geometry
+    const OPEN_KEY = 'b95-open';         // apps open when the page was last left
+    const WALLPAPER_KEY = 'b95-wallpaper'; // file in backgrounds/ picked with ?bg=
+    const WALLPAPER_DEFAULTS = ['background.jpg', 'background.png', 'background.webp'];
+    const wins = new Map();              // appId -> { app, el, iframe, ready }
+    const zOrder = [];                   // appIds, back to front
+    let cascadeStep = 0;
+
+    function storageGet(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw !== null) return JSON.parse(raw) ?? fallback;
+      } catch (_) {}
+      const wVal = winStoreGet(key);
+      return wVal !== null && wVal !== undefined ? wVal : fallback;
+    }
+    function storageSet(key, value) {
+      winStoreSet(key, value);
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) { /* per-browser convenience only */ }
+    }
+
+    // Apps merged into one with tabs: old id -> [new id, the tab it opens on]. A window saved open or
+    // placed under an old id carries over to the new app, opening on the tab that was open.
+    const MERGED_APPS = {
+      xrpusdt: ['gatewayboard', 'xrp-usdt'],
+      xrpbtc: ['gatewayboard', 'xrp-btc'],
+      btcxaut: ['gatewayboard', 'btc-xaut'],
+    };
+    const MERGED_TAB_KEYS = { gatewayboard: 'gateway_board_tab' }; // the tab key gateway-board/ reads
+    function migrateMergedApps() {
+      const open = storageGet(OPEN_KEY, []);
+      const layout = storageGet(LAYOUT_KEY, {});
+      if (!Object.keys(MERGED_APPS).some(id => open.includes(id) || id in layout)) return;
+      Object.entries(MERGED_APPS).forEach(([oldId, [newId, tab]]) => {
+        if (open.includes(oldId) && !open.includes(newId)) {
+          try { localStorage.setItem(MERGED_TAB_KEYS[newId], tab); } catch (_) { /* opens on its default tab */ }
+        }
+        if (layout[oldId] && !layout[newId]) layout[newId] = layout[oldId];
+        delete layout[oldId];
+      });
+      const merged = [...new Set(open.map(id => (MERGED_APPS[id] ? MERGED_APPS[id][0] : id)))];
+      storageSet(OPEN_KEY, merged);
+      storageSet(LAYOUT_KEY, layout);
+    }
+
+    // Canvas text can't read CSS variables: resolve the shared font stacks (shared/fonts.css) once
+    const FONT_UI = getComputedStyle(document.documentElement).getPropertyValue('--font-ui').trim() || 'sans-serif';
+    const FONT_MONO = getComputedStyle(document.documentElement).getPropertyValue('--font-mono').trim() || 'monospace';
+
+    function el(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    const TASKBAR_H = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--taskbar-h'), 10);
+    function desktopHeight() {
+      return window.innerHeight - TASKBAR_H;
+    }
+
+    function saveLayout() {
+      const layout = storageGet(LAYOUT_KEY, {});
+      wins.forEach(({ app, el: win }) => {
+        if (app.dialog) return;
+        // Inline styles hold the restore geometry; maximize is a CSS class on top
+        const entry = { x: parseInt(win.style.left, 10), y: parseInt(win.style.top, 10), max: win.classList.contains('maximized') };
+        if (app.resizable !== false) { entry.w = parseInt(win.style.width, 10); entry.h = parseInt(win.style.height, 10); }
+        layout[app.id] = entry;
+      });
+      storageSet(LAYOUT_KEY, layout);
+      storageSet(OPEN_KEY, [...wins.keys()].filter(id => !APP_BY_ID[id].dialog));
+    }
+
+    // Keeps at least part of the title bar reachable
+    function clampWindow(win) {
+      if (win.classList.contains('maximized')) return;
+      const w = win.offsetWidth || parseInt(win.style.width, 10) || 300;
+      const maxW = window.innerWidth;
+      const maxH = desktopHeight();
+      if (parseInt(win.style.width, 10) > maxW) win.style.width = `${maxW}px`;
+      if (parseInt(win.style.height, 10) > maxH) win.style.height = `${maxH}px`;
+      const x = Math.min(Math.max(parseInt(win.style.left, 10) || 0, 80 - w), maxW - 80);
+      const y = Math.min(Math.max(parseInt(win.style.top, 10) || 0, 0), maxH - 24);
+      win.style.left = `${x}px`;
+      win.style.top = `${y}px`;
+    }
+
+    function buildWindow(app) {
+      const win = el('div', 'win-window');
+      win.id = `win-${app.id}`;
+      win.dataset.app = app.id;
+
+      // Title bar
+      const titlebar = el('div', 'win-titlebar');
+      const title = el('div', 'win-title');
+      title.append(el('span', '', app.emoji || ''), el('span', 'win-title-text', app.windowTitle || app.title));
+      const btns = el('div', 'win-title-btns');
+      const addBtn = (act, label, aria) => {
+        const b = el('button', 'title-btn', label);
+        b.dataset.act = act;
+        b.title = aria;
+        b.setAttribute('aria-label', aria);
+        btns.appendChild(b);
+      };
+      if (!app.dialog) addBtn('min', '–', 'Minimize');
+      if (app.resizable !== false) addBtn('max', '▢', 'Maximize');
+      addBtn('close', '✕', 'Close');
+      titlebar.append(title, btns);
+      win.appendChild(titlebar);
+
+      btns.addEventListener('click', (e) => {
+        const act = e.target.dataset?.act;
+        if (act === 'min') minimizeWindow(app.id);
+        else if (act === 'max') toggleMaximize(app.id);
+        else if (act === 'close') closeWindow(app.id);
+      });
+
+      let iframe = null;
+      if (app.src) {
+        const menubar = el('div', 'win-menubar');
+        const reload = el('span', 'win-menu-item', '⟳ Reload');
+        reload.addEventListener('click', () => { iframe.src = app.src; });
+        const popout = el('span', 'win-menu-item', '↗ Pop-out');
+        popout.title = 'Open this app in its own browser tab';
+        popout.addEventListener('click', () => window.open(app.src, '_blank', 'noopener'));
+        menubar.append(reload, popout);
+        win.appendChild(menubar);
+
+        const body = el('div', 'win-body well');
+        iframe = document.createElement('iframe');
+        iframe.title = app.title;
+        iframe.src = app.src;
+        body.appendChild(iframe);
+        win.appendChild(body);
+
+        const status = el('div', 'win-statusbar');
+        status.append(el('span', '', app.status?.[0] || app.src), el('span', '', app.status?.[1] || ''));
+        win.appendChild(status);
+      } else if (app.template) {
+        const body = el('div');
+        body.appendChild(document.getElementById(app.template).content.cloneNode(true));
+        win.appendChild(body);
+      }
+
+      // Geometry: saved layout, else a cascaded default
+      const saved = storageGet(LAYOUT_KEY, {})[app.id];
+      const [defW, defH] = app.size || [600, 400];
+      const step = cascadeStep++ % 8;
+      const w = saved?.w ?? defW;
+      const h = saved?.h ?? defH;
+      win.style.width = `${Math.min(w, window.innerWidth)}px`;
+      if (h !== 'auto') win.style.height = `${Math.min(h, desktopHeight())}px`;
+      win.style.left = `${saved?.x ?? Math.max(0, Math.min(120 + step * 26, window.innerWidth - w))}px`;
+      win.style.top = `${saved?.y ?? Math.max(0, Math.min(20 + step * 26, desktopHeight() - (h === 'auto' ? 200 : h)))}px`;
+      if (saved?.max) win.classList.add('maximized');
+
+      setupDraggable(win, titlebar, app);
+      if (app.resizable !== false) setupResizable(win);
+      win.addEventListener('pointerdown', () => focusWindow(app.id), true);
+
+      document.body.appendChild(win);
+      if (app.dialog) {
+        // Dialogs open centered
+        win.style.left = `${Math.max(0, (window.innerWidth - win.offsetWidth) / 2)}px`;
+        win.style.top = `${Math.max(0, (desktopHeight() - win.offsetHeight) / 3)}px`;
+      }
+      clampWindow(win);
+      if (window.innerWidth <= 640 && app.resizable !== false) win.classList.add('maximized');
+      return { app, el: win, iframe, ready: false };
+    }
+
+    function openWindow(id) {
+      const app = APP_BY_ID[id];
+      if (!app || !appAvailable(app)) return;
+      if (app.url) {
+        window.open(app.url, '_blank', 'noopener');
+        showNotification('Launching Shortcut', `Opening ${app.title} in a new browser tab...`);
+        return;
+      }
+      let entry = wins.get(id);
+      if (!entry) {
+        entry = buildWindow(app);
+        wins.set(id, entry);
+        zOrder.push(id);
+        if (app.onCreate) app.onCreate(entry);
+      }
+      setMinimized(entry, false);
+      focusWindow(id);
+      saveLayout();
+    }
+
+    // Minimized apps keep running; they are told, so their polling can pause (B95.visible() in the bridge)
+    function setMinimized(entry, minimized) {
+      entry.el.classList.toggle('minimized', minimized);
+      entry.iframe?.contentWindow?.postMessage({ b95: true, type: 'shown', shown: !minimized }, '*');
+    }
+
+    function focusWindow(id) {
+      const idx = zOrder.indexOf(id);
+      if (idx === -1) return;
+      zOrder.splice(idx, 1);
+      zOrder.push(id);
+      zOrder.forEach((wid, i) => { wins.get(wid).el.style.zIndex = WINDOW_Z_BASE + i; });
+      setMinimized(wins.get(id), false);
+      updateActive();
+    }
+
+    // The active window is the top-most one that isn't minimized
+    function activeWindowId() {
+      for (let i = zOrder.length - 1; i >= 0; i--) {
+        if (!wins.get(zOrder[i]).el.classList.contains('minimized')) return zOrder[i];
+      }
+      return null;
+    }
+
+    function updateActive() {
+      const active = activeWindowId();
+      wins.forEach(({ el: win }, id) => {
+        win.querySelector('.win-titlebar').classList.toggle('inactive', id !== active);
+      });
+      updateTaskbar();
+    }
+
+    function closeWindow(id) {
+      const entry = wins.get(id);
+      if (!entry) return;
+      entry.el.remove(); // unloads the app and its node connections
+      wins.delete(id);
+      zOrder.splice(zOrder.indexOf(id), 1);
+      updateActive();
+      saveLayout();
+    }
+
+    function minimizeWindow(id) {
+      const entry = wins.get(id);
+      if (!entry) return;
+      setMinimized(entry, true); // restore from the taskbar
+      updateActive();
+    }
+
+    function toggleMaximize(id) {
+      const entry = wins.get(id);
+      if (!entry || entry.app.resizable === false) return;
+      entry.el.classList.toggle('maximized');
+      focusWindow(id);
+      saveLayout();
+    }
+
+    function setWindowTitle(entry, title) {
+      entry.el.querySelector('.win-title-text').textContent = title;
+    }
+
+    function updateTaskbar() {
+      const bar = document.getElementById('taskbar-items');
+      bar.replaceChildren();
+      const active = activeWindowId();
+      wins.forEach(({ app }, id) => {
+        if (app.dialog) return;
+        const btn = el('button', 'btn taskbar-window-btn');
+        btn.append(el('span', '', app.emoji || ''), el('span', '', app.title));
+        btn.title = app.windowTitle || app.title;
+        if (id === active) btn.classList.add('active');
+        btn.addEventListener('click', () => {
+          if (id === activeWindowId()) minimizeWindow(id);
+          else focusWindow(id);
+        });
+        bar.appendChild(btn);
+      });
+    }
+
+    // --- Pointer drag (mouse & touch) ---
+    function setupDraggable(win, titlebar, app) {
+      let dragging = false;
+      let startX, startY, origX, origY;
+
+      titlebar.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('button') || win.classList.contains('maximized')) return;
+        dragging = true;
+        document.body.classList.add('window-dragging');
+        startX = e.clientX;
+        startY = e.clientY;
+        origX = win.offsetLeft;
+        origY = win.offsetTop;
+        titlebar.setPointerCapture(e.pointerId);
+        e.preventDefault();
+      });
+
+      titlebar.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        win.style.left = `${origX + e.clientX - startX}px`;
+        win.style.top = `${origY + e.clientY - startY}px`;
+        clampWindow(win);
+      });
+
+      const stop = (e) => {
+        if (!dragging) return;
+        dragging = false;
+        document.body.classList.remove('window-dragging');
+        try { titlebar.releasePointerCapture(e.pointerId); } catch (_) {}
+        saveLayout();
+      };
+      titlebar.addEventListener('pointerup', stop);
+      titlebar.addEventListener('pointercancel', stop);
+
+      titlebar.addEventListener('dblclick', (e) => {
+        if (!e.target.closest('button')) toggleMaximize(app.id);
+      });
+    }
+
+    // --- Pointer resize from edges and corners ---
+    function setupResizable(win) {
+      ['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se'].forEach(dir => {
+        const handle = el('div', `win-resize-handle win-resize-${dir}`);
+        win.appendChild(handle);
+
+        let resizing = false;
+        let startX, startY, origW, origH, origL, origT;
+
+        handle.addEventListener('pointerdown', (e) => {
+          if (win.classList.contains('maximized')) return;
+          resizing = true;
+          document.body.classList.add('window-dragging');
+          startX = e.clientX;
+          startY = e.clientY;
+          origW = win.offsetWidth;
+          origH = win.offsetHeight;
+          origL = win.offsetLeft;
+          origT = win.offsetTop;
+          handle.setPointerCapture(e.pointerId);
+          e.preventDefault();
+          e.stopPropagation();
+        });
+
+        handle.addEventListener('pointermove', (e) => {
+          if (!resizing) return;
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+          const minW = 320;
+          const minH = 180;
+
+          if (dir.includes('e')) {
+            win.style.width = `${Math.max(minW, Math.min(origW + dx, window.innerWidth - origL))}px`;
+          } else if (dir.includes('w')) {
+            const cdx = Math.max(-origL, Math.min(dx, origW - minW));
+            win.style.left = `${origL + cdx}px`;
+            win.style.width = `${origW - cdx}px`;
+          }
+          if (dir.includes('s')) {
+            win.style.height = `${Math.max(minH, Math.min(origH + dy, desktopHeight() - origT))}px`;
+          } else if (dir.includes('n')) {
+            const cdy = Math.max(-origT, Math.min(dy, origH - minH));
+            win.style.top = `${origT + cdy}px`;
+            win.style.height = `${origH - cdy}px`;
+          }
+        });
+
+        const stop = (e) => {
+          if (!resizing) return;
+          resizing = false;
+          document.body.classList.remove('window-dragging');
+          try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
+          saveLayout();
+        };
+        handle.addEventListener('pointerup', stop);
+        handle.addEventListener('pointercancel', stop);
+      });
+    }
+
+    // Clicks inside an app's iframe never reach this page, so watch for the
+    // page losing focus to one of its iframes and raise that window
+    window.addEventListener('blur', () => {
+      setTimeout(() => {
+        const focused = document.activeElement;
+        if (focused?.tagName === 'IFRAME') {
+          const win = focused.closest('.win-window');
+          if (win && activeWindowId() !== win.dataset.app) focusWindow(win.dataset.app);
+        }
+      }, 0);
+    });
+
+    window.addEventListener('resize', () => wins.forEach(({ el: win }) => clampWindow(win)));
+
+    // Windows (app windows) may hang past the screen edge; scrolling into view (focus, find-in-page)
+    // must never shift the desktop itself
+    window.addEventListener('scroll', () => { if (window.scrollX || window.scrollY) window.scrollTo(0, 0); });
+
+    // =========================================================================
+    // Desktop icons & start menu
+    // =========================================================================
+    function renderDesktopIcons() {
+      const grid = document.getElementById('desktop-icons');
+      grid.replaceChildren();
+      APPS.filter(a => a.desktop !== false && appAvailable(a)).forEach(app => {
+        const icon = el('div', 'desktop-icon');
+        icon.tabIndex = 0;
+        icon.setAttribute('role', 'button');
+        icon.dataset.app = app.id;
+        icon.title = app.url ? `Double-click to open ${app.title} in a new tab` : `Double-click to open ${app.title}`;
+        icon.innerHTML = app.icon || ICONS.generic; // static SVG from ICONS
+        icon.appendChild(el('span', 'desktop-icon-label', app.title));
+        icon.addEventListener('click', () => selectIcon(icon));
+        icon.addEventListener('dblclick', () => openWindow(app.id));
+        icon.addEventListener('keydown', (e) => { if (e.key === 'Enter') openWindow(app.id); });
+        grid.appendChild(icon);
+      });
+    }
+
+    function selectIcon(icon) {
+      document.querySelectorAll('.desktop-icon').forEach(i => i.classList.toggle('selected', i === icon));
+    }
+
+    function renderStartMenu() {
+      const items = document.getElementById('start-menu-items');
+      items.replaceChildren();
+      const row = (emoji, label, onClick) => {
+        const r = el('div', 'start-menu-row');
+        r.append(el('span', 'start-menu-icon', emoji), el('span', '', label));
+        r.addEventListener('click', () => { closeStartMenu(); onClick(); });
+        items.appendChild(r);
+      };
+      const group = (heading, menu) => {
+        const apps = APPS.filter(a => a.menu === menu && appAvailable(a));
+        if (!apps.length) return;
+        items.appendChild(el('div', 'start-menu-sep'));
+        items.appendChild(el('div', 'start-menu-heading', heading));
+        apps.forEach(a => row(a.emoji, a.title, () => openWindow(a.id)));
+      };
+      group('POOLS & DEX', 'pools');
+      group('CREDIT', 'credit');
+      group('FLASH & CASCADE BUILDERS', 'builders');
+      group('PORTFOLIO', 'portfolio');
+      group('GAMES', 'games');
+      group('LINKS', 'links');
+      group('SYSTEM', 'system');
+      row('🔑', currentAccount ? `Log out ${currentAccount.name}` : 'Log in...', () => (currentAccount ? logout() : openLogin()));
+      const brandHidden = document.getElementById('brand-widget').classList.contains('hidden');
+      row('🖼️', brandHidden ? 'Show Desktop Panel' : 'Hide Desktop Panel', () => setBrandHidden(!brandHidden));
+      if (isExecutive() && ExecVaultWidget.hasSnapshot()) {
+        const vaultHidden = ExecVaultWidget.isHidden();
+        row('🥧', vaultHidden ? 'Show 3D Credit & Collateral' : 'Hide 3D Credit & Collateral', () => ExecVaultWidget.setHidden(!vaultHidden));
+      }
+      if (isExecutive() && ExecSilverWidget.hasSnapshot()) {
+        const silverHidden = ExecSilverWidget.isHidden();
+        row('🪙', silverHidden ? 'Show 3D Portfolio Vault' : 'Hide 3D Portfolio Vault', () => ExecSilverWidget.setHidden(!silverHidden));
+      }
+      if (wallpaperChoices.length && isExecutive()) {
+        const picked = storageGet(WALLPAPER_KEY, null);
+        const select = el('select', 'well');
+        select.append(new Option('Default', ''), ...wallpaperChoices.map(f => new Option(f.replace(/\.\w+$/, ''), f)));
+        select.value = wallpaperChoices.includes(picked) ? picked : '';
+        select.addEventListener('change', () => setWallpaper(select.value));
+        const r = el('label', 'start-menu-row start-menu-wallpaper');
+        r.append(el('span', '', '🎨'), el('span', '', 'Wallpaper'), select);
+        items.appendChild(r);
+      }
+      items.appendChild(el('div', 'start-menu-sep'));
+      row('ℹ️', `About ${DESKTOP_NAME}...`, () => openWindow('about'));
+    }
+
+    function toggleStartMenu() {
+      const menu = document.getElementById('start-menu');
+      if (menu.classList.contains('open')) { closeStartMenu(); return; }
+      renderStartMenu();
+      menu.classList.add('open');
+      document.getElementById('menu-btn').classList.add('active');
+    }
+
+    function closeStartMenu() {
+      document.getElementById('start-menu').classList.remove('open');
+      document.getElementById('menu-btn').classList.remove('active');
+    }
+
+    function setBrandHidden(hidden) {
+      document.getElementById('brand-widget').classList.toggle('hidden', hidden);
+      storageSet('b95-brand-hidden', hidden);
+    }
+
+    // Wallpaper: a backgrounds/ file picked in the app menu or with ?bg=, else the first
+    // WALLPAPER_DEFAULTS file next to index.html, else the built-in CSS one
+    let wallpaperChoices = [];           // backgrounds/ files, listed by server.py
+    let wallpaperLoad = 0;               // newest load wins when picks come quickly
+    const isWallpaperName = name => typeof name === 'string' && /^\w[\w.-]*$/.test(name) && name !== 'default';
+
+    function applyWallpaper() {
+      if (!isExecutive()) {
+        document.body.style.background = '';
+        return;
+      }
+      const picked = storageGet(WALLPAPER_KEY, null);
+      const load = ++wallpaperLoad;
+      (function tryWallpaper([file, ...rest]) {
+        if (load !== wallpaperLoad) return;
+        if (!file) { document.body.style.background = ''; return; }
+        const img = new Image();
+        img.onload = () => {
+          if (load === wallpaperLoad) document.body.style.background = `var(--bg0) url('${file}') center / cover no-repeat fixed`;
+        };
+        img.onerror = () => tryWallpaper(rest);
+        img.src = file;
+      })(isWallpaperName(picked) ? [`backgrounds/${picked}`, ...WALLPAPER_DEFAULTS] : WALLPAPER_DEFAULTS);
+    }
+
+    function setWallpaper(name) {
+      storageSet(WALLPAPER_KEY, isWallpaperName(name) ? name : null);
+      applyWallpaper();
+    }
+
+    // Stand-ins for the two corner widgets: the public copy keeps only these, so the desktop's
+    // calls to them do nothing there; the personal copy replaces them just below
+    const NO_WIDGET = {
+      initEvents() {}, sync() {}, hasSnapshot: () => false, isHidden: () => true, setHidden() {},
+      notifyAppOpened() {}, handleIncomingSnapshot() {}, cycleMode() {},
+    };
+    let ExecVaultWidget = NO_WIDGET;
+    let ExecSilverWidget = NO_WIDGET;
+
+
+    // =========================================================================
+    // Notifications & clock
+    // =========================================================================
+    let toastTimer = null;
+    function showNotification(title, msg) {
+      document.getElementById('toast-title').textContent = title;
+      document.getElementById('toast-msg').textContent = msg;
+      document.getElementById('toast').classList.remove('hidden');
+      clearTimeout(toastTimer);
+      // Long enough to read: 4 s plus time for the message's length, up to 12 s
+      toastTimer = setTimeout(() => document.getElementById('toast').classList.add('hidden'), Math.min(12000, 4000 + 40 * msg.length));
+    }
+
+    // The viewer's locale decides 12/24-hour time
+    const clockFormat = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+    function tickClock() {
+      const clock = document.getElementById('clock');
+      const now = new Date();
+      clock.textContent = clockFormat.format(now);
+      clock.title = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    }
+
+    // =========================================================================
+    // BitShares node connection (public read-only API), shared with apps
+    // =========================================================================
+    const NODE_URLS = B95.NODE_URLS; // one list, shared with the bridge's standalone mode
+    const BTS_CHAIN_ID = B95.CHAIN_ID;
+    // A node whose head block is older than this (by this computer's clock) is passed over for the next one
+    const NODE_MAX_LAG_MS = 120000;
+    const node = { ws: null, url: null, status: 'connecting', chainId: null, headBlock: null, headTime: null, behind: false, latencyMs: null, error: null };
+    const rpcPending = new Map();
+    let rpcId = 0;
+    const nodeWaiters = [];
+    let connectingPromise = null;
+    let reconnectTimer = null;
+
+    function scheduleReconnect(ms) {
+      if (reconnectTimer) return;
+      reconnectTimer = setTimeout(() => { reconnectTimer = null; connectNode(); }, ms);
+    }
+
+    function ensureNodeConnected(timeoutMs = 15000) {
+      if (node.ws && node.ws.readyState === WebSocket.OPEN && node.status === 'online') {
+        return Promise.resolve();
+      }
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          const idx = nodeWaiters.indexOf(done);
+          if (idx >= 0) nodeWaiters.splice(idx, 1);
+          reject(new Error(node.error || 'BitShares node connection timed out'));
+        }, timeoutMs);
+
+        function done(err) {
+          clearTimeout(timer);
+          if (err) reject(err);
+          else resolve();
+        }
+
+        nodeWaiters.push(done);
+
+        if (node.status === 'offline' && !connectingPromise) {
+          connectNode();
+        }
+      });
+    }
+
+    // Every call waits for a node that has passed connectNode's checks
+    async function rpc(method, params, api = 0) {
+      if (!node.ws || node.ws.readyState !== WebSocket.OPEN || node.status !== 'online') {
+        await ensureNodeConnected();
+      }
+      return rawCall(method, params, api);
+    }
+
+    // One call on the open socket; connectNode uses it directly to check a node before it counts as online
+    function rawCall(method, params, api = 0) {
+      return new Promise((resolve, reject) => {
+        if (!node.ws || node.ws.readyState !== WebSocket.OPEN) return reject(new Error('Not connected to BitShares node'));
+        const id = ++rpcId;
+        rpcPending.set(id, { resolve, reject });
+        node.ws.send(JSON.stringify({ id, method: 'call', params: [api, method, params] }));
+        setTimeout(() => {
+          if (rpcPending.has(id)) { rpcPending.delete(id); reject(new Error('Request timed out')); }
+        }, 12000);
+      });
+    }
+
+    function openSocket(url) {
+      return new Promise((resolve, reject) => {
+        let ws;
+        try { ws = new WebSocket(url); } catch (err) { return reject(err); }
+        const timer = setTimeout(() => { ws.close(); reject(new Error('Timed out')); }, 8000);
+        ws.onopen = () => { clearTimeout(timer); resolve(ws); };
+        ws.onerror = () => { clearTimeout(timer); reject(new Error('Connection failed')); };
+      });
+    }
+
+    function connectNode() {
+      if (connectingPromise) return connectingPromise;
+      if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+
+      connectingPromise = (async () => {
+        if (node.ws) { const old = node.ws; node.ws = null; old.close(); }
+        node.status = 'connecting';
+        renderNodeStatus();
+        const errors = [];
+        let sawBehind = false;
+
+        // The second pass runs only when a node was passed over for a stale head block: every node being
+        // stale more likely means this computer's clock is off, so one is then used, with a warning.
+        for (const strict of [true, false]) {
+          if (!strict && !sawBehind) break;
+          for (const url of NODE_URLS) {
+            try {
+              const ws = await openSocket(url);
+              ws.onmessage = (msg) => {
+                let data;
+                try { data = JSON.parse(msg.data); } catch (_) { return; }
+                const p = rpcPending.get(data.id);
+                if (!p) return;
+                rpcPending.delete(data.id);
+                if (data.error) p.reject(new Error(data.error.message || 'RPC error'));
+                else p.resolve(data.result);
+              };
+              ws.onclose = () => {
+                if (node.ws !== ws) return;
+                node.ws = null;
+                for (const p of rpcPending.values()) p.reject(new Error('WebSocket connection closed'));
+                rpcPending.clear();
+                node.status = 'offline';
+                node.error = 'Connection closed';
+                renderNodeStatus();
+                scheduleReconnect(3000);
+              };
+              node.ws = ws;
+              node.url = url;
+
+              node.chainId = await rawCall('get_chain_id', []);
+              if (node.chainId !== BTS_CHAIN_ID) throw new Error('Node is not on BitShares mainnet');
+              await refreshHead(rawCall);
+              const behind = headLagMs() > NODE_MAX_LAG_MS;
+              if (strict && behind) {
+                sawBehind = true;
+                throw new Error(`Head block is ${lagText()} old`);
+              }
+              node.behind = behind;
+              node.status = 'online';
+              node.error = null;
+              renderNodeStatus();
+              nodeWaiters.splice(0).forEach(done => done());
+              resolvePendingAccount();
+              reverifyTokenGate();
+              return;
+            } catch (err) {
+              errors.push(`${url}: ${err.message || 'failed'}`);
+              if (node.ws) { const w = node.ws; node.ws = null; w.close(); }
+            }
+          }
+        }
+        node.status = 'offline';
+        node.url = null;
+        node.error = errors.join('; ');
+        renderNodeStatus();
+        nodeWaiters.splice(0).forEach(done => done(new Error(node.error)));
+        scheduleReconnect(5000);
+      })().finally(() => {
+        connectingPromise = null;
+      });
+
+      return connectingPromise;
+    }
+
+    async function refreshHead(call = rpc) {
+      const t0 = performance.now();
+      const dgp = await call('get_dynamic_global_properties', []);
+      node.latencyMs = Math.round(performance.now() - t0);
+      node.headBlock = dgp.head_block_number;
+      node.headTime = dgp.time;
+    }
+
+    // How far the node's head block is behind this computer's clock
+    const headLagMs = () => (node.headTime ? Date.now() - Date.parse(node.headTime + 'Z') : 0);
+    const lagText = () => {
+      const s = Math.round(headLagMs() / 1000);
+      return s < 120 ? `${s} s` : s < 7200 ? `${Math.round(s / 60)} min` : `${Math.round(s / 3600)} h`;
+    };
+    const BEHIND_NOTE = 'either every node is stale or this computer\'s clock is off; prices may be out of date';
+
+    function renderNodeStatus() {
+      const tray = document.getElementById('tray-node');
+      const brand = document.getElementById('brand-node');
+      if (node.status === 'online' && node.behind) {
+        tray.textContent = '🟡 Node';
+        tray.title = `BitShares node: ${node.url}. Head block is ${lagText()} old: ${BEHIND_NOTE}`;
+        brand.textContent = `Node: online, head ${lagText()} old`;
+      } else if (node.status === 'online') {
+        tray.textContent = '🟢 Node';
+        tray.title = `BitShares node: ${node.url} (${node.latencyMs} ms)`;
+        brand.textContent = `Node: online, ${node.latencyMs} ms`;
+      } else if (node.status === 'connecting') {
+        tray.textContent = '⚪ Node';
+        tray.title = 'BitShares node: connecting';
+        brand.textContent = 'Node: connecting...';
+      } else {
+        tray.textContent = '🔴 Node';
+        tray.title = `BitShares node: offline (${node.error || 'unknown error'})`;
+        brand.textContent = 'Node: offline';
+      }
+
+      // Node Status window, when open
+      const statusEl = document.getElementById('node-status');
+      if (statusEl) {
+        document.getElementById('node-url').textContent = node.url || NODE_URLS.join(', ');
+        const colors = { online: 'var(--green)', connecting: 'var(--yellow)', offline: 'var(--red)' };
+        statusEl.textContent = `Status: ${node.status[0].toUpperCase()}${node.status.slice(1)}${node.status === 'connecting' ? '...' : ''}`;
+        statusEl.style.color = colors[node.status];
+        const lines = node.status === 'online'
+          ? [`Chain ID: ${node.chainId.substring(0, 16)}... (mainnet)`,
+             `Head block: ${node.headBlock} at ${node.headTime} UTC`,
+             `Latency: ${node.latencyMs} ms`,
+             ...(node.behind ? [`Warning: head block is ${lagText()} old; ${BEHIND_NOTE}.`] : [])]
+          : [node.status === 'offline' ? `Error: ${node.error || 'unknown'}` : 'Trying nodes...'];
+        const detail = document.getElementById('node-detail');
+        detail.replaceChildren(...lines.map(line => el('div', '', line)));
+      }
+      broadcastContext();
+    }
+
+    // =========================================================================
+    // Login: the viewer's BitShares account name, shared with apps.
+    // Looked up on-chain; nothing is signed, so this is not proof of ownership.
+    // =========================================================================
+    const LOGIN_STORAGE_KEY = 'b95-account';
+    // { name, id }. id is null while a whitelisted name, unlocked without a node, waits for its lookup
+    // (resolvePendingAccount); apps only ever receive an account with a real 1.2.N id.
+    let currentAccount = null;
+    const ACCOUNT_ID_RE = /^1\.2\.\d+$/;
+    const ACCOUNT_NAME_RE = /^[a-z][a-z0-9.-]{0,62}$/;
+    const hasChainId = (account) => !!(account && ACCOUNT_ID_RE.test(account.id || ''));
+
+    function loadStoredAccount() {
+      let saved = null;
+      try {
+        let raw = localStorage.getItem(LOGIN_STORAGE_KEY);
+        if (raw) saved = JSON.parse(raw);
+      } catch (_) {}
+      if (!saved) {
+        saved = winStoreGet(LOGIN_STORAGE_KEY);
+      }
+      // Storage is outside the desktop's control: only a well-formed account name is taken from it
+      if (!saved || typeof saved.name !== 'string' || !ACCOUNT_NAME_RE.test(saved.name)) return;
+      if (ACCOUNT_ID_RE.test(saved.id || '')) {
+        currentAccount = { name: saved.name, id: saved.id };
+        // Trusted until the node is back: reverifyTokenGate() then re-checks the balance
+        if (hasTokenGate(saved)) currentAccount.tokenGate = saved.tokenGate;
+      } else if (isWhitelisted(saved.name)) {
+        // Saved before its lookup finished (earlier versions stored the placeholder '1.2.x'): look it up again
+        currentAccount = { name: saved.name.trim().toLowerCase(), id: null };
+      }
+    }
+
+    function saveStoredAccount() {
+      try {
+        if (currentAccount) localStorage.setItem(LOGIN_STORAGE_KEY, JSON.stringify(currentAccount));
+        else localStorage.removeItem(LOGIN_STORAGE_KEY);
+      } catch (_) { /* per-browser convenience only */ }
+      winStoreSet(LOGIN_STORAGE_KEY, currentAccount || null);
+    }
+
+    function syncDesktopTier() {
+      const exec = isExecutive();
+      document.body.classList.toggle('executive-mode', exec);
+
+      // Close any open windows that are no longer available in this tier
+      wins.forEach(({ app }, id) => {
+        if (!appAvailable(app)) {
+          closeWindow(id);
+        }
+      });
+
+      applyWallpaper();
+      renderDesktopIcons();
+      renderLoginState();
+
+      const brandEl = document.querySelector('.brand-name');
+      if (brandEl) {
+        brandEl.innerHTML = exec
+          ? `<span>Executive</span> Workstation <span class="exec-pill">EXEC</span>`
+          : `<span>Workstation</span>`;
+      }
+      document.title = exec ? `DaoStreet Executive Workstation` : DESKTOP_NAME;
+      document.querySelectorAll('.desktop-name').forEach(n => {
+        n.textContent = exec ? `DaoStreet Executive` : DESKTOP_NAME;
+      });
+
+      if (document.getElementById('start-menu').classList.contains('open')) {
+        renderStartMenu();
+      }
+      ExecVaultWidget.sync();
+      ExecSilverWidget.sync();
+    }
+
+    function renderLoginState() {
+      const accountEl = document.getElementById('brand-account');
+      const btn = document.getElementById('btn-login');
+      const startIdentity = document.getElementById('start-identity');
+      if (currentAccount) {
+        const exec = isExecutive();
+        const execPill = () => (exec ? [' ', el('span', 'exec-pill', 'EXEC')] : []);
+        accountEl.replaceChildren(currentAccount.name, ...execPill());
+        accountEl.title = currentAccount.id || 'Account id: looking up when the node connects';
+        accountEl.style.color = exec ? 'var(--yellow)' : 'var(--accent)';
+        btn.textContent = 'Logout';
+        startIdentity.replaceChildren(`${currentAccount.name} (${currentAccount.id || 'id pending'})`, ...execPill());
+      } else {
+        const unlocked = isSessionUnlocked();
+        accountEl.textContent = unlocked ? 'Guest' : 'Not logged in';
+        accountEl.title = '';
+        accountEl.style.color = 'var(--muted)';
+        btn.textContent = unlocked ? 'Switch / Login' : 'Login';
+        startIdentity.textContent = unlocked ? 'Guest User (Public Mode)' : 'Not logged in';
+      }
+      broadcastContext();
+    }
+
+    // Stored as a bare string (not JSON), as earlier versions wrote it
+    const WALLET_SCHEMES = ['rawbeetvault', 'rawbeeteos', 'rawbeet'];
+    function getWalletScheme() {
+      let scheme = null;
+      try { scheme = localStorage.getItem('b95-wallet-scheme'); } catch (_) { /* storage unavailable */ }
+      return WALLET_SCHEMES.includes(scheme) ? scheme : WALLET_SCHEMES[0];
+    }
+
+    function setWalletScheme(scheme) {
+      try { localStorage.setItem('b95-wallet-scheme', scheme); } catch (_) { /* per-browser convenience only */ }
+      broadcastContext();
+    }
+
+    function openLogin() {
+      showMacLockScreen();
+    }
+
+    function showMacLockScreen() {
+      const overlay = document.getElementById('mac-login-overlay');
+      const err = document.getElementById('mac-login-error');
+      const input = document.getElementById('mac-login-account');
+      const pass = document.getElementById('mac-login-password');
+      const scheme = document.getElementById('mac-login-scheme');
+      if (err) err.textContent = '';
+      if (input) input.value = currentAccount ? currentAccount.name : '';
+      if (pass) pass.value = '';
+      if (scheme) scheme.value = getWalletScheme();
+      if (overlay) overlay.classList.remove('hidden');
+      setTimeout(() => input && input.focus(), 50);
+    }
+
+    function hideMacLockScreen() {
+      const overlay = document.getElementById('mac-login-overlay');
+      if (overlay) overlay.classList.add('hidden');
+    }
+
+    function unlockAsGuest() {
+      currentAccount = null;
+      saveStoredAccount();
+      setSessionUnlocked(true);
+      hideMacLockScreen();
+      syncDesktopTier();
+      showNotification('Guest Mode', 'Viewing public BitShares tools. Reconnect or sign in to save transactions.');
+    }
+
+    async function unlockWithAccount(name, scheme, password = '') {
+      const norm = String(name || '').trim().toLowerCase();
+      const err = document.getElementById('mac-login-error');
+      const submitBtn = document.getElementById('btn-mac-submit');
+      if (scheme) setWalletScheme(scheme);
+
+      if (!norm || norm === 'guest') {
+        unlockAsGuest();
+        return;
+      }
+
+      if (!ACCOUNT_NAME_RE.test(norm)) {
+        if (err) err.textContent = 'Not a valid BitShares account name.';
+        return;
+      }
+
+      // Whitelist fast-path if node is offline or connecting
+      if (isWhitelisted(norm) && node.status !== 'online') {
+        unlockPending(norm, `Welcome back ${norm}. Executive session active; apps get your account once the node confirms it.`);
+        return;
+      }
+
+      if (node.status !== 'online') {
+        if (err) err.textContent = 'BitShares node connecting - please wait a moment...';
+        return;
+      }
+
+      if (submitBtn) submitBtn.disabled = true;
+      if (err) err.textContent = 'Looking up account on BitShares...';
+
+      try {
+        const acc = await rpc('get_account_by_name', [norm]);
+        if (!acc?.id) {
+          if (err) err.textContent = `No account named "${norm}" on BitShares.`;
+          return;
+        }
+        // A password asks for Executive through the token gate; whitelisted names don't need one
+        let tokenGate = null;
+        if (password && !isWhitelisted(norm)) {
+          if (err) err.textContent = 'Checking password and BTS balance...';
+          const gate = await checkTokenGate(acc, password);
+          if (!gate.ok) {
+            if (err) err.textContent = gate.reason;
+            return;
+          }
+          tokenGate = TOKEN_GATE.passwordSha256;
+        }
+        currentAccount = { name: acc.name, id: acc.id };
+        if (tokenGate) currentAccount.tokenGate = tokenGate;
+        saveStoredAccount();
+        setSessionUnlocked(true);
+        hideMacLockScreen();
+        syncDesktopTier();
+        const exec = isExecutive();
+        showNotification(
+          exec ? 'Executive Unlocked' : 'Logged In',
+          exec ? `Welcome ${acc.name}. Executive desktop activated.` : `Viewing as ${acc.name} (${acc.id}).`
+        );
+      } catch (e) {
+        if (isWhitelisted(norm)) {
+          unlockPending(norm, `Welcome back ${norm}. The account lookup failed (${e.message}); it is retried, and apps get your account once it succeeds.`);
+        } else {
+          if (err) err.textContent = `Lookup error: ${e.message}`;
+        }
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    }
+
+    // Executive unlock without a confirmed account id: the desktop opens now, apps wait for the lookup
+    function unlockPending(name, message) {
+      currentAccount = { name, id: null };
+      saveStoredAccount();
+      setSessionUnlocked(true);
+      hideMacLockScreen();
+      syncDesktopTier();
+      showNotification('Executive Mode', message);
+      resolvePendingAccount();
+    }
+
+    /*
+     * Looks up the id of an account unlocked without one (node offline, or the lookup failed). Runs
+     * whenever the node comes online; a failed lookup is retried. A name that doesn't exist on chain
+     * logs out.
+     */
+    let resolvingAccount = null;
+    let resolveRetry = null;
+    function resolvePendingAccount() {
+      if (!currentAccount || hasChainId(currentAccount) || resolvingAccount || node.status !== 'online') return resolvingAccount;
+      const name = currentAccount.name;
+      clearTimeout(resolveRetry);
+      resolvingAccount = (async () => {
+        try {
+          const acc = await rpc('get_account_by_name', [name]);
+          if (!currentAccount || currentAccount.name !== name || hasChainId(currentAccount)) return; // changed meanwhile
+          if (!acc?.id) {
+            showNotification('Account Not Found', `No account named "${name}" on BitShares. Logged out.`);
+            logout();
+            return;
+          }
+          currentAccount = { name: acc.name, id: acc.id };
+          saveStoredAccount();
+          renderLoginState(); // also sends apps the account
+          showNotification('Account Confirmed', `${acc.name} is ${acc.id}; apps now use it.`);
+        } catch (e) {
+          console.warn(`Account lookup for ${name} failed; retrying`, e);
+          resolveRetry = setTimeout(resolvePendingAccount, 10000);
+        }
+      })().finally(() => { resolvingAccount = null; });
+      return resolvingAccount;
+    }
+
+    /*
+     * Re-checks the liquid BTS of a token-gated session: whenever the node comes online (which also
+     * covers a session restored from storage) and every 15 minutes. Below 1M BTS drops it to the
+     * public tier; a failed lookup keeps the session until the next check.
+     */
+    const TOKEN_GATE_RECHECK_MS = 15 * 60 * 1000;
+    let reverifyingGate = false;
+    async function reverifyTokenGate() {
+      if (reverifyingGate || !hasTokenGate(currentAccount) || !hasChainId(currentAccount) || node.status !== 'online') return;
+      reverifyingGate = true;
+      const account = currentAccount;
+      try {
+        const raw = await liquidGateBalance(account.id);
+        if (currentAccount !== account || raw >= TOKEN_GATE.minBase) return;
+        delete currentAccount.tokenGate;
+        saveStoredAccount();
+        syncDesktopTier();
+        showNotification('Executive Ended', `${account.name} now holds ${formatBts(raw)} liquid BTS, under the 1,000,000 needed. Switched to the public desktop.`);
+      } catch (e) {
+        console.warn('Token gate balance re-check failed; keeping the session for now', e);
+      } finally {
+        reverifyingGate = false;
+      }
+    }
+
+    function setupMacLoginForm() {
+      const form = document.getElementById('mac-login-form');
+      const guestBtn = document.getElementById('btn-mac-guest');
+      if (form) {
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const name = document.getElementById('mac-login-account').value;
+          const scheme = document.getElementById('mac-login-scheme').value;
+          const passEl = document.getElementById('mac-login-password');
+          const password = passEl.value;
+          passEl.value = ''; // never left in the page
+          unlockWithAccount(name, scheme, password);
+        });
+      }
+      if (guestBtn) {
+        guestBtn.addEventListener('click', () => {
+          unlockAsGuest();
+        });
+      }
+    }
+
+    function logout() {
+      currentAccount = null;
+      saveStoredAccount();
+      setSessionUnlocked(false);
+      syncDesktopTier();
+      showMacLockScreen();
+      showNotification('Logged Out', 'Session locked. Please log in or continue as Guest.');
+    }
+
+    function setupAbout() {
+      document.getElementById('about-version').textContent = `v${DESKTOP_VERSION}`;
+      document.getElementById('btn-about-ok').addEventListener('click', () => closeWindow('about'));
+      const serverEl = document.getElementById('about-server');
+      if (location.protocol === 'file:') {
+        serverEl.textContent = 'Opened as a local file. Web apps read the chain directly from public BitShares nodes.';
+        return;
+      }
+      serverEl.textContent = 'Checking desktop server...';
+      serverCheck.then(h => {
+        serverEl.textContent = h
+          ? `Desktop server running (Python ${h.python}). All apps connect directly to BitShares nodes.`
+          : 'Web copy: browser apps only, reading the chain directly from public BitShares nodes.';
+      });
+    }
+
+    // =========================================================================
+    // App bridge (see shared/b95-bridge.js)
+    // =========================================================================
+    // Apps may only make read-only lookups through the shared connection
+    const BRIDGE_RPC_ALLOWED = /^(get_|lookup_|list_)/;
+    // ...on the database API (0) or the history API
+    const BRIDGE_APIS = [0, 'database', 'history'];
+
+    function contextMessage() {
+      return {
+        b95: true,
+        type: 'context',
+        // Apps only ever see a confirmed account (real 1.2.N id), never one still waiting for its lookup
+        account: hasChainId(currentAccount) ? { name: currentAccount.name, id: currentAccount.id } : null,
+        executive: isExecutive(),
+        node: { status: node.status, url: node.url, headBlock: node.headBlock, latencyMs: node.latencyMs },
+        walletScheme: getWalletScheme(),
+      };
+    }
+
+    function broadcastContext() {
+      const msg = contextMessage();
+      wins.forEach(entry => { if (entry.ready) entry.iframe.contentWindow?.postMessage(msg, '*'); });
+    }
+
+    window.addEventListener('message', (e) => {
+      const d = e.data;
+      if (!d || d.b95 !== true) return;
+      const entry = [...wins.values()].find(w => w.iframe && w.iframe.contentWindow === e.source);
+      if (!entry) return;
+      // The source page may have navigated away before an RPC reply is ready
+      const reply = (msg) => e.source?.postMessage({ b95: true, ...msg }, '*');
+
+      switch (d.type) {
+        case 'hello':
+          entry.ready = true;
+          reply(contextMessage());
+          if (entry.el.classList.contains('minimized')) reply({ type: 'shown', shown: false });
+          break;
+        case 'notify':
+          showNotification(String(d.title || entry.app.title).slice(0, 80), String(d.msg || '').slice(0, 300));
+          break;
+        case 'title':
+          setWindowTitle(entry, String(d.title || entry.app.windowTitle || entry.app.title).slice(0, 120));
+          break;
+        case 'open':
+          if (APP_BY_ID[d.app]) openWindow(d.app);
+          break;
+        case 'login':
+          openLogin();
+          break;
+        case 'deeplink':
+          if (typeof d.url === 'string' && /^(rawbeeteos|rawbeetvault|rawbeet|beet):\/\//i.test(d.url)) B95.followLink(d.url);
+          break;
+        case 'rpc':
+          if (typeof d.method !== 'string' || !BRIDGE_RPC_ALLOWED.test(d.method) || !Array.isArray(d.params)) {
+            reply({ type: 'rpc-result', id: d.id, error: `Method not allowed: ${d.method}` });
+            break;
+          }
+          if (!BRIDGE_APIS.includes(d.api ?? 0)) {
+            reply({ type: 'rpc-result', id: d.id, error: `API not allowed: ${d.api}` });
+            break;
+          }
+          rpc(d.method, d.params, d.api ?? 0)
+            .then(result => reply({ type: 'rpc-result', id: d.id, result }))
+            .catch(err => reply({ type: 'rpc-result', id: d.id, error: err.message }));
+          break;
+      }
+    });
+
+    // =========================================================================
+    // Start-up
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      // ?bg=<file> picks a backgrounds/ wallpaper and this browser remembers it; ?bg=default forgets it
+      const bgParam = new URLSearchParams(location.search).get('bg');
+      if (bgParam !== null) setWallpaper(bgParam);
+      else applyWallpaper();
+
+      document.title = DESKTOP_NAME;
+      document.querySelectorAll('.desktop-name').forEach(n => { n.textContent = DESKTOP_NAME; });
+
+      renderDesktopIcons();
+      if (storageGet('b95-brand-hidden', false)) setBrandHidden(true);
+      document.getElementById('btn-close-brand').addEventListener('click', () => setBrandHidden(true));
+
+      document.getElementById('menu-btn').addEventListener('click', toggleStartMenu);
+      document.addEventListener('pointerdown', (e) => {
+        if (!e.target.closest('#start-menu, #menu-btn')) closeStartMenu();
+        if (!e.target.closest('.desktop-icon')) selectIcon(null);
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeStartMenu();
+      });
+
+      document.getElementById('tray-node').addEventListener('click', () => openWindow('node'));
+
+      setupMacLoginForm();
+      setInterval(reverifyTokenGate, TOKEN_GATE_RECHECK_MS);
+      ExecVaultWidget.initEvents();
+      ExecSilverWidget.initEvents();
+      loadStoredAccount();
+      if (!isSessionUnlocked()) {
+        showMacLockScreen();
+        document.body.style.background = '';
+        ExecVaultWidget.sync();
+        ExecSilverWidget.sync();
+      } else {
+        syncDesktopTier();
+      }
+      document.getElementById('btn-login').addEventListener('click', () => (currentAccount ? logout() : openLogin()));
+
+      tickClock();
+      setInterval(tickClock, 1000);
+
+      // Reopen the apps that were open last time; server apps once server.py has answered
+      migrateMergedApps();
+      const reopen = storageGet(OPEN_KEY, []).filter(id => APP_BY_ID[id] && !APP_BY_ID[id].dialog);
+      reopen.forEach(openWindow);
+      updateTaskbar();
+      serverCheck.then(h => {
+        if (!h) return;
+        serverHealth = h;
+        renderDesktopIcons();
+        reopen.filter(id => APP_BY_ID[id].server).forEach(openWindow);
+        updateTaskbar();
+        fetch('api/backgrounds', { headers: { 'X-B95': '1' } })
+          .then(r => (r.ok ? r.json() : null))
+          .then(d => { wallpaperChoices = Array.isArray(d?.backgrounds) ? d.backgrounds.filter(isWallpaperName) : []; })
+          .catch(() => { /* the menu just leaves the wallpaper choice out */ });
+      });
+
+      connectNode();
+      setInterval(async () => {
+        if (node.status === 'offline') {
+          connectNode();
+          return;
+        }
+        if (node.status !== 'online') return;
+        try {
+          await refreshHead();
+          // A node that stopped keeping up is swapped for the next one
+          if (!node.behind && headLagMs() > NODE_MAX_LAG_MS) { connectNode(); return; }
+          renderNodeStatus();
+        } catch (_) { /* onclose handles drops */ }
+      }, 20000);
+    });
+  </script>
+</body>
+</html>
