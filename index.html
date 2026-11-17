@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="shared/fonts.css">
-  <title>DaoStreet Workstation</title>
+  <title>BitShares95</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2l12 7v14l-12 7-12-7V9z' fill='%232e3440' stroke='%2388c0d0' stroke-width='2'/%3E%3Cpath d='M10 20l6-9 6 9z' fill='none' stroke='%23eceff4' stroke-width='1.6' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='11' r='2.4' fill='%2388c0d0'/%3E%3Ccircle cx='10' cy='20' r='2.4' fill='%23a3be8c'/%3E%3Ccircle cx='22' cy='20' r='2.4' fill='%23ebcb8b'/%3E%3C/svg%3E">
   <style>
     /* Palette after Nord (MIT, arcticicestudio). Fonts are open (OFL/Apache) when
@@ -777,7 +777,7 @@
   <div id="mac-login-overlay" class="mac-login-overlay hidden">
     <div class="mac-dialog" role="dialog" aria-modal="true" aria-labelledby="mac-dialog-title">
       <div class="mac-titlebar">
-        <span class="mac-title-plate" id="mac-dialog-title">Welcome to DaoStreet OS</span>
+        <span class="mac-title-plate" id="mac-dialog-title">Welcome to BitShares95</span>
       </div>
       <div class="mac-dialog-body">
         <div class="mac-banner">
@@ -785,7 +785,7 @@
             <use href="#logo"/>
           </svg>
           <div>
-            <div class="mac-banner-title">DaoStreet Workstation</div>
+            <div class="mac-banner-title">BitShares95</div>
             <div class="mac-banner-sub">Log in with your BitShares account or proceed as Guest.</div>
           </div>
         </div>
@@ -830,8 +830,8 @@
       <button class="title-btn" id="btn-close-brand" title="Hide (app menu &gt; Show Desktop Panel brings it back)" aria-label="Hide panel">–</button>
     </div>
     <div class="brand-body">
-      <img class="brand-logo" src="daostreet-logo.webp" alt="daostreet" style="width: 170px; height: auto; max-height: 40px; object-fit: contain;">
-      <div class="brand-name"><span>Workstation</span></div>
+      <svg class="brand-logo" viewBox="0 0 32 32" style="width: 40px; height: 40px;" aria-hidden="true"><use href="#logo"/></svg>
+      <div class="brand-name"><span>BitShares95</span></div>
       <div class="brand-meta">
         <div style="display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 26px;">
           <span>Account: <strong id="brand-account">Not logged in</strong></span>
@@ -867,8 +867,8 @@
   <template id="tpl-about">
     <div class="dialog-body">
       <div style="display: flex; align-items: center; gap: 10px;">
-        <img class="brand-logo" src="daostreet-logo.webp" alt="daostreet" style="width: 120px; height: auto; max-height: 28px; object-fit: contain;">
-        <div class="brand-name"><span>Workstation</span>
+        <svg class="brand-logo" viewBox="0 0 32 32" style="width: 28px; height: 28px;" aria-hidden="true"><use href="#logo"/></svg>
+        <div class="brand-name"><span>BitShares95</span>
           <span class="hint" style="font-weight: normal;" id="about-version"></span></div>
       </div>
       <div>A desktop for BitShares DEX tools. Each app runs in its own window and shares the desktop's node connection and account.</div>
@@ -911,7 +911,7 @@
 
   <script src="shared/b95-bridge.js"></script>
   <script>
-    const DESKTOP_NAME = 'DaoStreet Workstation';
+    const DESKTOP_NAME = 'BitShares95';
     const DESKTOP_VERSION = '1.1';
 
     // =========================================================================
@@ -1043,7 +1043,7 @@
       { id: 'pools', title: 'Pools Tracker', windowTitle: 'BitShares Pools TVL & Beet Tracker', emoji: '🌊',
         icon: ICONS.pools, src: 'beet-pools-tracker/index.html', size: [880, 580], menu: 'pools',
         status: ['beet-pools-tracker/index.html', 'Liquidity Pool TVL & Swaps'], public: true },
-      { id: 'creditflow', title: 'CreditFlow', windowTitle: 'DaoStreet CreditFlow - Global TVL & Collateral Tracker', emoji: '🏦',
+      { id: 'creditflow', title: 'CreditFlow', windowTitle: 'BitShares95 CreditFlow - Global TVL & Collateral Tracker', emoji: '🏦',
         icon: ICONS.creditflow, src: 'bitshares-creditflow/index.html', size: [960, 620], menu: 'credit',
         status: ['bitshares-creditflow/index.html', 'Credit Offers & Collateral'], public: true },
       { id: 'clilite', title: 'Pool Stats Lite', windowTitle: 'Pool Stats Lite - BTC Depth & LP Valuation', emoji: '📋',
@@ -2005,12 +2005,12 @@
       const brandEl = document.querySelector('.brand-name');
       if (brandEl) {
         brandEl.innerHTML = exec
-          ? `<span>Executive</span> Workstation <span class="exec-pill">EXEC</span>`
-          : `<span>Workstation</span>`;
+          ? `<span>BitShares95</span> Executive <span class="exec-pill">EXEC</span>`
+          : `<span>BitShares95</span>`;
       }
-      document.title = exec ? `DaoStreet Executive Workstation` : DESKTOP_NAME;
+      document.title = exec ? `BitShares95 Executive` : DESKTOP_NAME;
       document.querySelectorAll('.desktop-name').forEach(n => {
-        n.textContent = exec ? `DaoStreet Executive` : DESKTOP_NAME;
+        n.textContent = exec ? `BitShares95 Executive` : DESKTOP_NAME;
       });
 
       if (document.getElementById('start-menu').classList.contains('open')) {

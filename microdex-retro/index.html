@@ -1452,7 +1452,7 @@
     setInterval(() => { if (B95.visible()) fetchOrderBook(); }, 3000);
     setInterval(() => { if (B95.visible()) fetchTickerPrices(); }, 10000);
 
-    // BitShares Workstation desktop login fills the account field until you type your own
+    // BitShares95 desktop login fills the account field until you type your own
     const accountInput = document.getElementById('input-account');
     accountInput.addEventListener('input', () => { accountInput.dataset.userEdited = 'true'; });
 

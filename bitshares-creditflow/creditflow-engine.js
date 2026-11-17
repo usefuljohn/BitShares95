@@ -1,5 +1,5 @@
 /**
- * DaoStreet CreditFlow Engine (shared, zero dependency)
+ * BitShares95 CreditFlow Engine (shared, zero dependency)
  *
  * The single source of truth for BitShares credit-offer valuation. Loaded by
  * CreditFlow's pages and other desktop apps via <script src>, and by Node tools via require().
@@ -91,7 +91,7 @@
     statusListener(state, text);
   }
 
-  // Bridge mode helper: if embedded in BitShares Workstation desktop, use shared WebSocket via B95
+  // Bridge mode helper: if embedded in BitShares95 desktop, use shared WebSocket via B95
   function isBridgeMode() {
     return typeof window !== 'undefined' && !!(window.B95 && window.B95.embedded);
   }
@@ -107,7 +107,7 @@
   async function connectToNode() {
     if (isBridgeMode()) {
       if (isConnected()) return;
-      updateStatus('connecting', 'Waiting for BitShares Workstation node...');
+      updateStatus('connecting', 'Waiting for BitShares95 node...');
       // The desktop tries each of its nodes in turn (8 s apiece), so allow for that
       await new Promise((resolve) => {
         const timeout = setTimeout(done, BRIDGE_WAIT_MS);
@@ -120,8 +120,8 @@
         bridgeWaiters.push(done);
       });
       if (!isConnected()) {
-        updateStatus('error', 'BitShares Workstation node not ready');
-        throw new Error('BitShares Workstation desktop node is not connected');
+        updateStatus('error', 'BitShares95 node not ready');
+        throw new Error('BitShares95 desktop node is not connected');
       }
       return;
     }
@@ -204,7 +204,7 @@
     });
   }
 
-  // If embedded in BitShares Workstation, mirror the desktop's node status. One listener
+  // If embedded in BitShares95, mirror the desktop's node status. One listener
   // for the page's lifetime; connectToNode() waits on it through bridgeWaiters.
   const BRIDGE_WAIT_MS = 30000;
   const bridgeWaiters = [];
@@ -212,7 +212,7 @@
     window.B95.onContext((ctx) => {
       const status = ctx.node?.status;
       if (status === 'online') {
-        const host = ctx.node.url ? new URL(ctx.node.url).host : 'BitShares Workstation';
+        const host = ctx.node.url ? new URL(ctx.node.url).host : 'BitShares95';
         connectedHost = host;
         updateStatus('connected', `Connected via B95 (${host})`);
         bridgeWaiters.slice().forEach(done => done());

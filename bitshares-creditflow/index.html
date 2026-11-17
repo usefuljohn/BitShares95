@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="../shared/fonts.css">
-  <title>DaoStreet CreditFlow - Global TVL & Collateral Tracker</title>
-  <meta name="description" content="Monitor DaoStreet Credit offers TVL, credit composition, and collateral breakdown in real-time." />
+  <title>BitShares95 CreditFlow - Global TVL & Collateral Tracker</title>
+  <meta name="description" content="Monitor BitShares credit offers TVL, credit composition, and collateral breakdown in real-time." />
   <style>
     :root {
       --bg-dark: #090c13;
@@ -545,7 +545,7 @@
       <div class="brand">
         <div class="brand-logo">🌊</div>
         <div class="brand-text">
-          <h1>DaoStreet CreditFlow</h1>
+          <h1>BitShares95 CreditFlow</h1>
           <p>Credit Offers TVL & Collateral Tracker</p>
         </div>
       </div>
@@ -652,7 +652,7 @@
     </main>
 
     <footer>
-      DaoStreet CreditFlow &bull; Zero Dependency Single-Page HTML App &bull; <a href="offers.html" style="color: var(--primary); text-decoration: none;">Offers Detail &rarr;</a>
+      BitShares95 CreditFlow &bull; Zero Dependency Single-Page HTML App &bull; <a href="offers.html" style="color: var(--primary); text-decoration: none;">Offers Detail &rarr;</a>
     </footer>
   </div>
 
@@ -660,7 +660,7 @@
   <script>
     /**
      * BitShares CreditFlow Engine with TVL & Collateral Analytics.
-     * Reads the chain through the BitShares Workstation bridge (../shared/b95-bridge.js).
+     * Reads the chain through the BitShares95 bridge (../shared/b95-bridge.js).
      */
 
     // Scrub gateway/issuer prefixes from asset symbols (e.g. XBTSX.USDC -> USDC, IOB.XRP -> XRP).
@@ -731,7 +731,7 @@
     let lastSuccessAt = null;
     let lastSnapshot = null;
 
-    // Node access goes through the BitShares Workstation bridge: inside the desktop it
+    // Node access goes through the BitShares95 bridge: inside the desktop it
     // uses the desktop's shared node connection; opened on its own (Pop-out)
     // the bridge opens a private read-only connection.
     const BRIDGE_WAIT_MS = 30000;        // the desktop tries its nodes in turn, 8 s apiece
@@ -746,7 +746,7 @@
     B95.onContext(({ node }) => {
       if (!B95.embedded) return;
       if (node?.status === 'online') {
-        connectedHost = node.url ? new URL(node.url).host : 'BitShares Workstation';
+        connectedHost = node.url ? new URL(node.url).host : 'BitShares95';
         updateStatus('connected', `Connected via B95 (${connectedHost})`);
         nodeWaiters.slice().forEach(done => done());
       } else if (node?.status === 'offline') {
@@ -758,7 +758,7 @@
 
     async function connectToNode() {
       if (isConnected()) return;
-      updateStatus('connecting', 'Waiting for BitShares Workstation node...');
+      updateStatus('connecting', 'Waiting for BitShares95 node...');
       await new Promise((resolve) => {
         const timeout = setTimeout(done, BRIDGE_WAIT_MS);
         function done() {
@@ -770,8 +770,8 @@
         nodeWaiters.push(done);
       });
       if (!isConnected()) {
-        updateStatus('error', 'BitShares Workstation node not ready');
-        throw new Error('BitShares Workstation desktop node is not connected');
+        updateStatus('error', 'BitShares95 node not ready');
+        throw new Error('BitShares95 desktop node is not connected');
       }
     }
 

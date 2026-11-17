@@ -1,4 +1,4 @@
-// BitShares Workstation app bridge.
+// BitShares95 app bridge.
 // Include from an app page: <script src="../shared/b95-bridge.js"></script>
 //
 // Inside the desktop, apps share its BitShares node connection and logged-in
